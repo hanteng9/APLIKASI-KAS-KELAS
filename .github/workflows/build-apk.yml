@@ -50,7 +50,7 @@ jobs:
         run: |
           D=apk/android/app/src/main/java/com/kaskelas/app
           mkdir -p $D
-          cat > $D/MainActivity.java <<'EOF'
+          cat > $D/MainActivity.java.new <<'EOF'
           package com.kaskelas.app;
 
           import android.graphics.Color;
@@ -70,6 +70,7 @@ jobs:
             @Override
             public void onCreate(Bundle savedInstanceState) {
               super.onCreate(savedInstanceState);
+              try {
               Window w = getWindow();
               if (Build.VERSION.SDK_INT >= 28) w.getAttributes().layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES;
               WindowCompat.setDecorFitsSystemWindows(w, false);
@@ -88,6 +89,7 @@ jobs:
                 return WindowInsetsCompat.CONSUMED;
               });
               ViewCompat.requestApplyInsets(root);
+              } catch (Throwable t) { }
             }
           }
           EOF
@@ -96,10 +98,16 @@ jobs:
           cd apk/android
           chmod +x gradlew
           ./gradlew assembleDebug
+          cp app/build/outputs/apk/debug/app-debug.apk ../../kas-kelas-tes.apk
+          J=app/src/main/java/com/kaskelas/app
+          cp $J/MainActivity.java.new $J/MainActivity.java
+          ./gradlew assembleDebug
           cp app/build/outputs/apk/debug/app-debug.apk ../../kas-kelas.apk
       - name: Terbitkan ke Releases
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ github.run_number }}
           name: Kas Kelas v${{ github.run_number }}
-          files: kas-kelas.apk
+          files: |
+            kas-kelas.apk
+            kas-kelas-tes.apk
