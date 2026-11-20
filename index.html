@@ -315,6 +315,23 @@ async function loadData() {
   }
   data = normalize(d);
 }
+let unsub = null;
+function listen() {
+  if (unsub) { unsub(); unsub = null; }
+  if (!fb || !user) return;
+  const u = user.uid;
+  unsub = fb.fs.collection('kaskelas').doc(u).onSnapshot(snap => {
+    if (!user || user.uid !== u || !snap.exists || snap.metadata.hasPendingWrites) return;
+    if (localStorage.getItem('kk_dirty_' + u)) return;
+    try {
+      const j = snap.data().json;
+      if (j === localStorage.getItem('kk_data_' + u)) return;
+      data = normalize(JSON.parse(j));
+      localStorage.setItem('kk_data_' + u, j);
+      render();
+    } catch (e) {}
+  }, () => {});
+}
 addEventListener('online', () => { if (user && localStorage.getItem('kk_dirty_' + user.uid)) sync(); });
 const C = () => {
   let c = data.classes.find(x => x.id === ui.classId);
@@ -510,6 +527,7 @@ const ACT = {
   next: () => { ui.ref = shift(ui.period, ui.ref, 1); render(); },
   now: () => { ui.ref = today(); render(); },
   logout: async () => {
+    if (unsub) { unsub(); unsub = null; }
     if (fb) await fb.auth.signOut(); else localStorage.removeItem('kk_session');
     localStorage.removeItem('kk_fbsess');
     user = null; data = null; mode = 'in'; showAuth();
@@ -687,6 +705,7 @@ async function enter(s) {
   user = s; ui = { classId: null, period: 'w', ref: today(), page: 'home' };
   await loadData(); render();
   if (localStorage.getItem('kk_dirty_' + user.uid)) sync();
+  listen();
   const sp = $('#splash'); if (sp) sp.remove();
 }
 (async () => {
