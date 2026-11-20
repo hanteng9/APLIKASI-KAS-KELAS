@@ -248,6 +248,14 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .xa .ib{width:30px;height:30px;border-radius:10px}
 .xa .ib svg{width:17px;height:17px}
 .xa .ib.ph{background:var(--tealL);color:var(--tealD)}
+/* menu bawah gaya pil melayang, ikon saja */
+@media(max-width:899px){
+  .bnav{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));padding:5px 6px;border:0;border-radius:999px;background:rgba(38,38,40,.94);box-shadow:0 8px 24px rgba(0,0,0,.28);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+  .bnav button{min-height:46px;padding:0;justify-content:center;border-radius:999px;color:#fff;background:none}
+  .bnav button span{display:none}
+  .bnav button .i{width:25px;height:25px}
+  .bnav button.on{color:#fff;background:rgba(255,255,255,.2)}
+}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
 
@@ -637,7 +645,7 @@ const NAV = [['home', 'home', 'Beranda'], ['siswa', 'users', 'Siswa'], ['keluar'
 function shell(view) {
   const N = prof && prof.role === 'owner' ? (RO ? [['admin', 'users', 'Admin'], ...NAV.filter(x => x[0] !== 'ai')] : [['admin', 'users', 'Admin']]) : NAV;
   const nav = c => N.map(([id, i, l]) => c === 'b'
-    ? `<button class="${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}">${ic(i)}<span>${l}</span></button>`
+    ? `<button class="${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}" aria-label="${l}">${ic(i)}<span>${l}</span></button>`
     : `<button class="nav ${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}">${ic(i)}${l}</button>`).join('');
   return `<div class="shell">
   <aside class="side"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>${nav('s')}<div class="sp"></div>
