@@ -294,6 +294,7 @@ const CATS = { 'Alat tulis':'#5AA9FF', 'Kebersihan':'#13B5A5', 'Acara':'#FF7B6B'
 const AVC = ['#13B5A5','#F5A800','#FF7B6B','#5AA9FF','#9B8CFF','#4FBF7F'];
 let user = null, data = null, fb = null, mode = 'in', dip = null, lastMobile = innerWidth < 640;
 let ui = { classId: null, period: 'w', ref: today(), page: 'home' };
+let apkUrl = '';
 
 function normalize(d) {
   d = d && typeof d === 'object' ? d : {};
@@ -456,10 +457,11 @@ function shell(view) {
   return `<div class="shell">
   <aside class="side"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>${nav('s')}<div class="sp"></div>
     <button class="nav install" data-act="install" hidden>${ic('dl')}Download aplikasi</button>
+    <button class="nav apkdl" data-act="apkdl" hidden>${ic('dl')}Download APK</button>
     <div class="me">${esc(user.email || user.name || '')}</div>
     ${fb ? `<button class="nav" data-act="chpin">${ic('key')}Ganti PIN</button>` : ''}<button class="nav" data-act="logout">${ic('out')}Keluar akun</button></aside>
   <div><header class="mtop"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>
-    <div><button class="btn sm ghost install" data-act="install" hidden>Pasang Aplikasi</button>${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
+    <div><button class="btn sm ghost install" data-act="install" hidden>Pasang Aplikasi</button><button class="btn sm ghost apkdl" data-act="apkdl" hidden>Unduh APK</button>${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
   <main class="main">${view}</main></div></div>
   <nav class="bnav ${N.length > 4 ? 'five' : ''}" style="grid-template-columns:repeat(${N.length},1fr)" aria-label="Menu">${nav('b')}</nav>`;
 }
@@ -560,6 +562,15 @@ const ACT = {
     if (dip) { dip.prompt(); await dip.userChoice; dip = null; setInstallVisible(); }
     else toast('Buka menu browser lalu pilih "Pasang aplikasi" atau "Tambahkan ke layar utama"');
   },
+  apkdl: () => { if (apkUrl) location.href = apkUrl; },
+  apkSave: async () => {
+    const v = ($('#apkIn').value || '').trim();
+    if (!/^https:\/\/\S+$/i.test(v)) return toast('Link harus diawali https://');
+    try { await fb.fs.collection('settings').doc('app').set({ apkUrl: v, t: Date.now() }); toast('Link APK disimpan'); } catch (e) { toast('Gagal, cek aturan Firestore'); }
+  },
+  apkDel: async () => {
+    try { await fb.fs.collection('settings').doc('app').set({ apkUrl: '', t: Date.now() }); toast('Link APK dihapus'); } catch (e) { toast('Gagal, cek aturan Firestore'); }
+  },
   chpin: () => modal('Ganti PIN',
     fld('PIN lama', '<input name="o" type="password" inputmode="numeric" maxlength="6" autocomplete="off" required>') +
     fld('PIN baru (6 angka)', '<input name="n" type="password" inputmode="numeric" maxlength="6" autocomplete="off" required>') +
@@ -654,7 +665,8 @@ let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() 
 /* ---------- pasang aplikasi ---------- */
 const standalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
 function setInstallVisible() {
-  document.querySelectorAll('.install').forEach(b => { b.hidden = standalone(); });
+  document.querySelectorAll('.install').forEach(b => { b.hidden = standalone() || (!!apkUrl && !!b.closest('.mtop')); });
+  document.querySelectorAll('.apkdl').forEach(b => { b.hidden = !apkUrl || standalone(); });
 }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); dip = e; setInstallVisible(); });
 addEventListener('appinstalled', () => { dip = null; setInstallVisible(); toast('Aplikasi terpasang'); });
@@ -680,6 +692,15 @@ async function initFb() {
     return true;
   } catch (e) { return false; }
 }
+function listenApk() {
+  try { apkUrl = localStorage.getItem('kk_apk') || ''; } catch (e) {}
+  fb.fs.collection('settings').doc('app').onSnapshot(sn => {
+    apkUrl = (sn.exists && sn.data().apkUrl) || '';
+    try { localStorage.setItem('kk_apk', apkUrl); } catch (e) {}
+    setInstallVisible();
+    if (user && prof && !RO && ui.page === 'admin') render();
+  }, () => {});
+}
 function errMsg(e) {
   const m = {
     'auth/invalid-credential': 'Email atau password salah', 'auth/wrong-password': 'Email atau password salah', 'auth/user-not-found': 'Email belum terdaftar',
@@ -704,6 +725,7 @@ function showAuth() {
     <div class="or">atau</div>
     <button class="gbtn" id="gbtn" type="button">${GOOGLE}Masuk dengan Google</button>
     <button class="btn ghost block instl install" data-act="install" type="button" hidden>${ic('dl')}Download aplikasi</button>
+    <button class="btn ghost block instl apkdl" data-act="apkdl" type="button" hidden>${ic('dl')}Download APK</button>
     </div></section></div>`;
   setInstallVisible();
   document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; showAuth(); });
@@ -862,6 +884,10 @@ function vAdmin() {
   }).join('');
   return `<div class="hd"><div><h1>Admin</h1><p>Pantau semua bendahara, langsung saat ada perubahan</p></div></div>
   <section class="own"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat"><span>Total masuk</span><b>${fmt(tin)}</b></div><div class="stat"><span>Total saldo</span><b>${fmt(tin - tout)}</b></div></section>
+  <div class="card" style="margin:14px 0"><h3>File Aplikasi (APK)</h3><p class="cap">Upload APK ke Google Drive / GitHub Releases / hosting lain (gratis), lalu tempel link downloadnya di sini. Pengguna akan melihat tombol download aplikasi.</p>
+    <p class="cap" style="margin-bottom:10px">Link saat ini: ${apkUrl ? esc(apkUrl) : 'belum ada'}</p>
+    <div class="f"><input id="apkIn" type="url" inputmode="url" autocomplete="off" placeholder="Tempel link download APK (https://...)"></div>
+    <div class="acts"><button class="btn sm" data-act="apkSave">Simpan link APK</button>${apkUrl ? '<button class="btn sm ghost" data-act="apkDel">Hapus link</button>' : ''}</div></div>
   ${OWN.length ? `<div class="ucards">${cards}</div>` : '<div class="card empty"><p>Belum ada bendahara yang mendaftar.</p></div>'}`;
 }
 async function googleLogin() {
@@ -893,6 +919,7 @@ async function enter(s) {
 }
 (async () => {
   if (await initFb()) {
+    listenApk();
     fb.auth.onAuthStateChanged(u => {
       if (u) {
         const s = { uid: u.uid, email: u.email, name: u.displayName || (u.email || '').split('@')[0] };
