@@ -234,6 +234,29 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
+
+/* tabel centang */
+.tbh{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tbh h3{font-size:17px}
+.tbn{display:flex;align-items:center;gap:6px}
+.tbn span{font-weight:800;font-size:14px;min-width:116px;text-align:center}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid var(--line);border-radius:14px;background:#fff}
+table.kt{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+table.kt th,table.kt td{padding:8px 6px;text-align:center;border-bottom:1px solid var(--line);white-space:nowrap;vertical-align:middle}
+table.kt th{background:var(--tealL);color:var(--tealD);font-weight:800;line-height:1.2}
+table.kt th small{display:block;font-weight:600;font-size:10px;color:var(--mut)}
+table.kt td:first-child,table.kt th:first-child{position:sticky;left:0;z-index:2;text-align:left;white-space:normal;word-break:break-word;min-width:112px;max-width:132px;background:#fff;box-shadow:1px 0 0 var(--line)}
+table.kt th:first-child{background:var(--tealL)}
+table.kt th:not(:first-child),table.kt td:not(:first-child){min-width:52px}
+table.kt tr:last-child td{border-bottom:0}
+table.kt tfoot td{background:var(--bg);font-weight:800}
+table.kt tfoot td:first-child{background:var(--bg)}
+.kt .ck{color:var(--tealD);font-weight:900;font-size:16px}
+.kt .pt{color:#B77900;font-weight:800}
+.kt .no{color:#C4CCDA}
+.kt .nm2{font-weight:700;display:block}
+.kt .tt{font-weight:800;font-size:12px}
+.tleg{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--mut);margin-top:10px}
 /* ai analisis */
 .aiw{display:flex;flex-direction:column;height:calc(100dvh - 200px);min-height:380px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);overflow:hidden}
 .aih{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -511,10 +534,11 @@ function shell(view) {
 }
 function toolbar() {
   const opts = data.classes.map(c => `<option value="${c.id}" ${c.id === ui.classId ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
-  const seg = Object.entries(PN).map(([k, v]) => `<button class="${ui.period === k ? 'on' : ''}" data-act="per" data-id="${k}">${v}</button>`).join('');
+  const rAll = ui.page === 'riwayat' && ui.all;
+  const seg = Object.entries(PN).map(([k, v]) => `<button class="${ui.period === k && !rAll ? 'on' : ''}" data-act="per" data-id="${k}">${v}</button>`).join('') + (ui.page === 'riwayat' ? `<button class="${rAll ? 'on' : ''}" data-act="perAll">Total</button>` : '');
   return `<div class="bar"><label class="sel"><select id="selClass" aria-label="Pilih kelas">${opts}</select></label>
   <div class="seg">${seg}</div>
-  <div class="pnav"><div class="pn1"><button class="ib" data-act="prev" aria-label="Sebelumnya">${ic('l')}</button><span>${esc(plabel(ui.period, ui.ref))}</span><button class="ib" data-act="next" aria-label="Berikutnya">${ic('r')}</button></div><div class="pn2"><input type="${ui.period === 'm' ? 'month' : 'date'}" id="refDate" class="rdate" value="${ui.period === 'm' ? ui.ref.slice(0, 7) : ui.ref}" aria-label="Pilih tanggal"><button class="today" data-act="now">Hari ini</button></div></div></div>`;
+  <div class="pnav" ${rAll ? 'hidden' : ''}><div class="pn1"><button class="ib" data-act="prev" aria-label="Sebelumnya">${ic('l')}</button><span>${esc(plabel(ui.period, ui.ref))}</span><button class="ib" data-act="next" aria-label="Berikutnya">${ic('r')}</button></div><div class="pn2"><input type="${ui.period === 'm' ? 'month' : 'date'}" id="refDate" class="rdate" value="${ui.period === 'm' ? ui.ref.slice(0, 7) : ui.ref}" aria-label="Pilih tanggal"><button class="today" data-act="now">Hari ini</button></div></div></div>`;
 }
 const noClass = () => `<div class="card empty">${ic('users', 'big')}<h3>Belum ada kelas</h3><p>Buat kelas dulu, lalu tambahkan nama-nama siswanya.</p><button class="btn" data-act="addClass">${ic('plus')}Buat kelas</button></div>`;
 
@@ -558,14 +582,41 @@ function vKeluar() {
   return `<div class="hd"><div><h1>Pengeluaran</h1><p>Total ${fmt(k.outSum)} di periode ini</p></div><button class="btn" data-act="addExp">${ic('plus')}Catat pengeluaran</button></div>${toolbar()}
   <div class="card">${l.length ? `<div class="rows">${rows}</div>` : `<div class="empty">${ic('wallet', 'big')}<h3>Belum ada pengeluaran</h3><p>Catat apa saja yang dibeli pakai uang kas.</p></div>`}</div>`;
 }
+function vTbl(k) {
+  const c = k.c, tipe = c.tipe || 'w', iu = c.iuran || {}, d0 = parse(ui.ref);
+  const ms = iso(new Date(d0.getFullYear(), d0.getMonth(), 1)), me = iso(new Date(d0.getFullYear(), d0.getMonth() + 1, 0));
+  const wk = [];
+  for (let a = weekStart(ms); a <= me; a = addDays(a, 7)) {
+    const x = a < ms ? ms : a, y = addDays(a, 6) > me ? me : addDays(a, 6);
+    wk.push({ a: x, b: y, need: tipe === 'w' ? (iu.w || 0) : tipe === 'd' ? (iu.d || 0) * (Math.round((parse(y) - parse(x)) / 864e5) + 1) : 0 });
+  }
+  const mneed = tipe === 'm' ? (iu.m || 0) : wk.reduce((t, w) => t + w.need, 0);
+  const pays = k.allIn.filter(x => x.date >= ms && x.date <= me);
+  const colT = wk.map(() => 0);
+  const rows = c.students.map((st, i) => {
+    const mine = pays.filter(x => x.studentId === st.id);
+    let tot = 0;
+    const cells = wk.map((w, j) => {
+      const p = sumA(mine.filter(x => x.date >= w.a && x.date <= w.b)); tot += p; colT[j] += p;
+      return p <= 0 ? '<td><span class="no">–</span></td>' : (w.need > 0 && p < w.need) ? `<td title="${esc(fmt(p))}"><span class="pt">${esc(fmtK(p))}</span></td>` : `<td title="${esc(fmt(p))}"><span class="ck">✓</span></td>`;
+    }).join('');
+    const stt = tot <= 0 ? '<span class="no">Belum</span>' : (mneed > 0 && tot < mneed) ? '<span class="pt">Sebagian</span>' : '<span class="ck">Lunas</span>';
+    return `<tr><td><span class="nm2">${st.no || i + 1}. ${esc(st.name)}</span></td>${cells}<td>${stt}<div class="tt">${esc(fmtK(tot))}</div></td></tr>`;
+  }).join('');
+  const head = wk.map((w, j) => `<th>M${j + 1}<small>${parse(w.a).getDate()}–${parse(w.b).getDate()}</small></th>`).join('');
+  const foot = colT.map(v => `<td>${v > 0 ? esc(fmtK(v)) : '–'}</td>`).join('');
+  return `<section class="card" style="margin-bottom:16px"><div class="tbh"><h3>Tabel bayar kas</h3><div class="tbn"><button class="ib" data-act="tblPrev" aria-label="Bulan sebelumnya">${ic('l')}</button><span>${MONF[d0.getMonth()]} ${d0.getFullYear()}</span><button class="ib" data-act="tblNext" aria-label="Bulan berikutnya">${ic('r')}</button></div></div>
+  ${c.students.length ? `<div class="tw"><table class="kt"><thead><tr><th>Siswa</th>${head}<th>Status</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td>Total</td>${foot}<td>${esc(fmtK(sumA(pays)))}</td></tr></tfoot></table></div>
+  <div class="tleg"><span><b class="ck">✓</b> Lunas</span><span><b class="pt">rb</b> Sebagian</span><span><b class="no">–</b> Belum</span><span>M = minggu ke-</span></div>` : '<p class="cap">Belum ada siswa di kelas ini.</p>'}</section>`;
+}
 function vRiwayat() {
-  const k = calc();
-  const l = [...k.pin.map(x => ({ ...x, t: 'in' })), ...k.pout.map(x => ({ ...x, t: 'out' }))].sort((a, b) => b.date.localeCompare(a.date));
+  const k = calc(), all = !!ui.all;
+  const l = [...(all ? k.allIn : k.pin).map(x => ({ ...x, t: 'in' })), ...(all ? k.allOut : k.pout).map(x => ({ ...x, t: 'out' }))].sort((a, b) => b.date.localeCompare(a.date));
   const rows = l.map(x => x.t === 'in'
     ? `<div class="row"><span class="ico" style="background:var(--teal)">${ic('plus')}</span><div class="t"><b>${esc(sname(k.c, x.studentId))}</b><small>${dmy(x.date)}${x.note ? ', ' + esc(x.note) : ''}</small></div><span class="amt in">+ ${fmt(x.amount)}</span><button class="ib del" data-act="delPay" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div>`
     : `<div class="row"><span class="ico" style="background:${CATS[x.cat] || CATS.Lainnya}">${ic('cash')}</span><div class="t"><b>${esc(x.desc)}</b><small>${dmy(x.date)}, ${esc(x.cat)}</small></div><span class="amt out">- ${fmt(x.amount)}</span><button class="ib del" data-act="delExp" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div>`).join('');
-  return `<div class="hd"><div><h1>Riwayat</h1><p>Masuk ${fmt(k.inSum)}, keluar ${fmt(k.outSum)}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-act="expPdf">${ic('dl')}PDF</button><button class="btn ghost" data-act="expXls">${ic('dl')}Excel</button><button class="btn" data-act="pay">${ic('plus')}Catat kas masuk</button></div></div>${toolbar()}
-  <div class="card">${l.length ? `<div class="rows">${rows}</div>` : `<div class="empty">${ic('list', 'big')}<h3>Belum ada catatan</h3><p>Catatan kas masuk dan keluar periode ini muncul di sini.</p></div>`}</div>`;
+  return `<div class="hd"><div><h1>Riwayat</h1><p>${all ? 'Total masuk ' + fmt(sumA(k.allIn)) + ', keluar ' + fmt(sumA(k.allOut)) + ', saldo ' + fmt(k.saldo) : 'Masuk ' + fmt(k.inSum) + ', keluar ' + fmt(k.outSum)}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-act="expPdf">${ic('dl')}PDF</button><button class="btn ghost" data-act="expXls">${ic('dl')}Excel</button><button class="btn" data-act="pay">${ic('plus')}Catat kas masuk</button></div></div>${toolbar()}
+  ${vTbl(k)}<div class="card">${l.length ? `<div class="rows">${rows}</div>` : `<div class="empty">${ic('list', 'big')}<h3>Belum ada catatan</h3><p>Catatan kas masuk dan keluar periode ini muncul di sini.</p></div>`}</div>`;
 }
 function render() {
   const keep = window.scrollY;
@@ -593,8 +644,11 @@ function readClass(f) {
   return { name, iuran: { d: n('d'), w: n('w'), m: n('m') }, tipe: ['d', 'w', 'm'].includes(f.get('tipe')) ? f.get('tipe') : 'w' };
 }
 const ACT = {
-  go: id => { if (id === 'admin') { RO = null; data = normalize(null); } ui.page = id; render(); window.scrollTo(0, 0); },
-  per: id => { ui.period = id; ui.gper = null; render(); },
+  go: id => { if (id === 'admin') { RO = null; data = normalize(null); } ui.page = id; if (id !== 'riwayat') ui.all = false; render(); window.scrollTo(0, 0); },
+  per: id => { ui.period = id; ui.gper = null; ui.all = false; render(); },
+  perAll: () => { ui.all = true; render(); },
+  tblPrev: () => { ui.ref = shift('m', ui.ref, -1); render(); },
+  tblNext: () => { ui.ref = shift('m', ui.ref, 1); render(); },
   gper: id => { ui.gper = id; render(); },
   prev: () => { ui.ref = shift(ui.period, ui.ref, -1); render(); },
   next: () => { ui.ref = shift(ui.period, ui.ref, 1); render(); },
@@ -1363,7 +1417,7 @@ ${aiContext()}`;
       }
       await new Promise(res => setTimeout(res, Math.min(400 * Math.pow(2, attempt) + (lastKind === 'limit' ? 1200 : 0), 4000)));
     }
-    if (lastErr) { const er = new Error(aiErrInfo(lastKind)); er.kind = lastKind; er.retry = retry; throw er; }
+    if (lastErr) { const er = new Error(aiErrInfo(lastKind) + (lastKind === 'auth' ? ' [' + String(lastErr).slice(0, 160) + ']' : '')); er.kind = lastKind; er.retry = retry; throw er; }
     const txt = (j.candidates[0].content.parts || []).map(p => p.text || '').join('').trim() || 'Hmm, aku lagi nggak bisa jawab nih, coba tanya lagi ya.';
     if (!alive()) return;
     aiHist.push({ role: 'model', parts: [{ text: txt }] });
