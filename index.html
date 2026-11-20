@@ -207,7 +207,23 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .bnav.five button{font-size:10px}
 .ro [data-act=pay]:not(.pill),.ro [data-act=addClass],.ro [data-act=editClass],.ro [data-act=delClass],.ro [data-act=addStudents],.ro [data-act=editStudent],.ro [data-act=delStudent],.ro [data-act=delPay],.ro [data-act=addExp],.ro [data-act=delExp]{display:none!important}
 .ro .pill{pointer-events:none}
-.ro [data-act=addStudent]{display:none!important}
+.ro [data-act=addStudent],.ro [data-act=setTipe],.ro [data-act=qrisUp],.ro [data-act=qrisDel]{display:none!important}
+.pn1,.pn2{display:flex;align-items:center;gap:4px}
+.pn1{flex:1;min-width:0}
+.stat>*{position:relative;z-index:1}
+.qrbox{width:min(100%,260px);margin:0 auto 12px;border-radius:16px;overflow:hidden;border:1.5px solid var(--line);background:#fff}
+.qrbox svg{display:block;width:100%;height:auto}
+@media(max-width:899px){
+  .pnav{flex-direction:column;align-items:stretch;gap:6px;border-radius:24px;padding:6px}
+  .pn1 span{white-space:nowrap;font-size:14px;flex:1;text-align:center}
+  .pn2 .rdate{flex:1;max-width:none;min-width:0}
+}
+@media(max-width:600px){
+  .stats{grid-template-columns:minmax(0,1fr)}
+  .stat{padding:16px}
+  .stat b{font-size:clamp(20px,7vw,26px);overflow-wrap:anywhere}
+  .stat.hero small{max-width:75%;overflow-wrap:anywhere}
+}
 .rdate{min-height:36px;padding:0 10px;border:0;border-radius:999px;background:var(--tealL);color:var(--tealD);font-weight:800;font-size:13px;max-width:150px}
 .ucards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px}
 @media(max-width:600px){
@@ -232,6 +248,8 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>'
 const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
 const fmt = n => 'Rp\u00A0' + Math.round(n).toLocaleString('id-ID');
 const fmtK = n => n >= 1e6 ? (n / 1e6).toFixed(1).replace(/\.0$/, '').replace('.', ',') + 'jt' : n >= 1e3 ? Math.round(n / 1e3) + 'rb' : String(n);
+const fmtN = n => n > 0 ? String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.') : '';
+const parseRp = v => Math.round(Number(String(v == null ? '' : v).replace(/\D/g, '')) || 0);
 
 /* ---------- ikon ---------- */
 const IC = {
@@ -303,7 +321,8 @@ function normalize(d) {
   const r = {
     classes: Array.isArray(d.classes) ? d.classes : [],
     payments: Array.isArray(d.payments) ? d.payments : [],
-    expenses: Array.isArray(d.expenses) ? d.expenses : []
+    expenses: Array.isArray(d.expenses) ? d.expenses : [],
+    qris: typeof d.qris === 'string' ? d.qris : ''
   };
   r.classes.forEach(c => { if (c && Array.isArray(c.students)) c.students.forEach((s, i) => { if (!(s.no > 0)) s.no = i + 1; }); });
   return r;
@@ -474,7 +493,7 @@ function toolbar() {
   const seg = Object.entries(PN).map(([k, v]) => `<button class="${ui.period === k ? 'on' : ''}" data-act="per" data-id="${k}">${v}</button>`).join('');
   return `<div class="bar"><label class="sel"><select id="selClass" aria-label="Pilih kelas">${opts}</select></label>
   <div class="seg">${seg}</div>
-  <div class="pnav"><button class="ib" data-act="prev" aria-label="Sebelumnya">${ic('l')}</button><span>${esc(plabel(ui.period, ui.ref))}</span><button class="ib" data-act="next" aria-label="Berikutnya">${ic('r')}</button><input type="${ui.period === 'm' ? 'month' : 'date'}" id="refDate" class="rdate" value="${ui.period === 'm' ? ui.ref.slice(0, 7) : ui.ref}" aria-label="Pilih tanggal"><button class="today" data-act="now">Hari ini</button></div></div>`;
+  <div class="pnav"><div class="pn1"><button class="ib" data-act="prev" aria-label="Sebelumnya">${ic('l')}</button><span>${esc(plabel(ui.period, ui.ref))}</span><button class="ib" data-act="next" aria-label="Berikutnya">${ic('r')}</button></div><div class="pn2"><input type="${ui.period === 'm' ? 'month' : 'date'}" id="refDate" class="rdate" value="${ui.period === 'm' ? ui.ref.slice(0, 7) : ui.ref}" aria-label="Pilih tanggal"><button class="today" data-act="now">Hari ini</button></div></div></div>`;
 }
 const noClass = () => `<div class="card empty">${ic('users', 'big')}<h3>Belum ada kelas</h3><p>Buat kelas dulu, lalu tambahkan nama-nama siswanya.</p><button class="btn" data-act="addClass">${ic('plus')}Buat kelas</button></div>`;
 
@@ -507,7 +526,9 @@ function vSiswa() {
   return `<div class="hd"><div><h1>Siswa</h1><p>${c.students.length} siswa di kelas ${esc(c.name)}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-act="addClass">${ic('plus')}Kelas baru</button><button class="btn ghost" data-act="addStudents">${ic('plus')}Tempel daftar nama</button><button class="btn" data-act="addStudent">${ic('plus')}Tambah siswa</button></div></div>
   <div class="bar"><label class="sel"><select id="selClass" aria-label="Pilih kelas">${data.classes.map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
   <button class="btn sm ghost" data-act="editClass">${ic('edit')}Ubah kelas</button><button class="btn sm warn" data-act="delClass">${ic('trash')}Hapus kelas</button></div>
-  <div class="card" style="margin-bottom:16px"><h3>Iuran kas</h3><div class="chips">${c.tipe ? `<span class="chip">Tipe ${PN[c.tipe]}</span>` : ''}<span class="chip">Harian ${fmt(c.iuran.d)}</span><span class="chip">Mingguan ${fmt(c.iuran.w)}</span><span class="chip">Bulanan ${fmt(c.iuran.m)}</span></div></div>
+  <div class="card" style="margin-bottom:16px"><h3>Iuran kas</h3><div class="chips">${c.tipe ? `<span class="chip">Tipe ${PN[c.tipe]}</span>` : ''}<span class="chip">Harian ${fmt(c.iuran.d)}</span><span class="chip">Mingguan ${fmt(c.iuran.w)}</span><span class="chip">Bulanan ${fmt(c.iuran.m)}</span></div>
+    <p class="cap" style="margin:14px 0 8px">Sistem pembayaran kelas ini</p><div class="seg">${Object.entries(PN).map(([q, t]) => `<button class="${(c.tipe || ui.period) === q ? 'on' : ''}" data-act="setTipe" data-id="${q}">${t}</button>`).join('')}</div></div>
+  <div class="card" style="margin-bottom:16px"><h3>QRIS pembayaran</h3><p class="cap">${data.qris ? 'Tersimpan: ' + esc(qrisName(data.qris)) + '. Saat siswa bayar, QRIS dibuat dengan nominal terisi otomatis.' : 'Unggah gambar QRIS. Nanti siswa tinggal scan tanpa mengetik nominal.'}</p><div class="acts" style="flex-wrap:wrap"><button class="btn sm" data-act="qrisUp">${ic('plus')}${data.qris ? 'Ganti gambar QRIS' : 'Unggah gambar QRIS'}</button>${data.qris ? `<button class="btn sm warn" data-act="qrisDel">${ic('trash')}Hapus</button>` : ''}</div></div>
   <div class="card">${c.students.length ? `<div class="rows">${list}</div>` : `<div class="empty">${ic('users', 'big')}<h3>Belum ada siswa</h3><p>Tempel daftar nama, satu nama per baris.</p><button class="btn" data-act="addStudents">${ic('plus')}Tambah siswa</button></div>`}</div>`;
 }
 function vKeluar() {
@@ -543,11 +564,11 @@ function classForm(c) {
   const v = c || { name: '', iuran: { d: 2000, w: 10000, m: 40000 } };
   return fld('Nama kelas', `<input name="name" maxlength="30" required value="${esc(v.name)}" placeholder="Contoh: X IPA 1">`) +
     fld('Tipe pembayaran uang kas', `<select name="tipe">${Object.entries(PN).map(([q, t]) => `<option value="${q}" ${(v.tipe || 'w') === q ? 'selected' : ''}>${t}</option>`).join('')}</select>`) +
-    `<div class="g3">${fld('Harian', `<input name="d" type="number" min="0" step="500" value="${v.iuran.d}">`)}${fld('Mingguan', `<input name="w" type="number" min="0" step="500" value="${v.iuran.w}">`)}${fld('Bulanan', `<input name="m" type="number" min="0" step="500" value="${v.iuran.m}">`)}</div>`;
+    `<div class="g3">${fld('Harian', `<input name="d" type="text" inputmode="numeric" class="rp" value="${fmtN(v.iuran.d)}">`)}${fld('Mingguan', `<input name="w" type="text" inputmode="numeric" class="rp" value="${fmtN(v.iuran.w)}">`)}${fld('Bulanan', `<input name="m" type="text" inputmode="numeric" class="rp" value="${fmtN(v.iuran.m)}">`)}</div>`;
 }
 function readClass(f) {
   const name = f.get('name').trim(); if (!name) { toast('Nama kelas wajib diisi'); return null; }
-  const n = k => Math.max(0, Math.round(Number(f.get(k)) || 0));
+  const n = k => parseRp(f.get(k));
   return { name, iuran: { d: n('d'), w: n('w'), m: n('m') }, tipe: ['d', 'w', 'm'].includes(f.get('tipe')) ? f.get('tipe') : 'w' };
 }
 const ACT = {
@@ -637,27 +658,51 @@ const ACT = {
     const opts = c.students.map(s => `<option value="${s.id}" ${s.id === sid ? 'selected' : ''}>${s.no}. ${esc(s.name)}</option>`).join('');
     modal('Catat kas masuk',
       fld('Nama siswa', `<select name="sid">${opts}</select>`) +
-      fld('Nominal (Rp)', `<input name="amt" type="number" inputmode="numeric" min="1" step="1" required value="${c.iuran[c.tipe || ui.period] || ''}">`) +
+      fld('Nominal (Rp)', `<input name="amt" type="text" inputmode="numeric" class="rp" required value="${fmtN(c.iuran[c.tipe || ui.period])}">`) +
       fld('Tanggal', `<input name="date" type="date" required value="${defDate()}">`) +
-      fld('Catatan (opsional)', '<input name="note" maxlength="60" placeholder="Contoh: bayar 2 minggu">'),
+      fld('Catatan (opsional)', '<input name="note" maxlength="60" placeholder="Contoh: bayar 2 minggu">') + '<button type="button" class="btn ghost block" id="qrisBtn">Bayar pakai QRIS</button>',
       f => {
-        const amt = Math.round(Number(f.get('amt')));
+        const amt = parseRp(f.get('amt'));
         if (!(amt > 0)) { toast('Nominal harus lebih dari 0'); return false; }
         if (!okDate(f.get('date'))) { toast('Tanggal tidak valid'); return false; }
         data.payments.push({ id: uid(), classId: c.id, studentId: f.get('sid'), amount: amt, date: f.get('date'), note: f.get('note').trim() });
         save(); render(); toast('Catatan tersimpan');
       });
+    const qb = $('#qrisBtn'); if (qb) qb.onclick = () => ACT.qrisPay(qb.form);
   },
+  qrisPay: form => {
+    const c = C(), f = new FormData(form), amt = parseRp(f.get('amt')), sid = f.get('sid'), date = f.get('date'), note = (f.get('note') || '').trim();
+    if (!data.qris) return toast('Unggah gambar QRIS dulu di menu Siswa');
+    if (!(amt > 0)) return toast('Isi nominal dulu');
+    if (!okDate(date)) return toast('Tanggal tidak valid');
+    const p = qrisAmount(data.qris, amt); if (!p) return toast('QRIS tersimpan rusak, unggah ulang di menu Siswa');
+    qrSvg(p).then(svg => { $('#dlg').close(); modal('Scan QRIS', `<div class="qrbox">${svg}</div><p class="msg" style="text-align:center;margin-bottom:4px"><b>${esc(sname(c, sid))}</b><br>${fmt(amt)}</p><p class="cap" style="text-align:center">${esc(qrisName(data.qris))}. Nominal sudah terisi, tinggal scan dan bayar.</p>`, () => {
+      data.payments.push({ id: uid(), classId: c.id, studentId: sid, amount: amt, date, note: note ? note + ' (QRIS)' : 'QRIS' });
+      save(); render(); toast('Catatan tersimpan');
+    }, 'Sudah dibayar'); }).catch(() => toast('Gagal membuat QR, cek koneksi internet'));
+  },
+  setTipe: id => { const c = C(); c.tipe = id; ui.period = id; ui.gper = null; save(); render(); toast('Catatan tersimpan'); },
+  qrisUp: () => {
+    const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*';
+    i.onchange = async () => {
+      const f = i.files && i.files[0]; if (!f) return;
+      toast('Membaca QRIS...');
+      try { const p = qrisCheck(await decodeQr(f)); if (!p) return toast('Gambar ini bukan QRIS yang valid, coba gambar yang lebih jelas'); data.qris = p; save(); render(); toast('QRIS tersimpan'); }
+      catch (e) { toast('QRIS tidak terbaca, pakai gambar yang jelas dan cek internet'); }
+    };
+    i.click();
+  },
+  qrisDel: () => ask('QRIS yang tersimpan akan dihapus.', () => { data.qris = ''; save(); render(); toast('Catatan tersimpan'); }),
   delPay: id => ask('Hapus catatan kas masuk ini?', () => { data.payments = data.payments.filter(x => x.id !== id); save(); render(); toast('Catatan tersimpan'); }),
   addExp: () => {
     const c = C();
     modal('Catat pengeluaran',
       fld('Untuk apa', '<input name="desc" maxlength="60" required placeholder="Contoh: Spidol dan penghapus">') +
       fld('Kategori', `<select name="cat">${Object.keys(CATS).map(x => `<option>${x}</option>`).join('')}</select>`) +
-      fld('Nominal (Rp)', '<input name="amt" type="number" inputmode="numeric" min="1" step="1" required>') +
+      fld('Nominal (Rp)', '<input name="amt" type="text" inputmode="numeric" class="rp" required>') +
       fld('Tanggal', `<input name="date" type="date" required value="${defDate()}">`),
       f => {
-        const amt = Math.round(Number(f.get('amt'))), desc = f.get('desc').trim();
+        const amt = parseRp(f.get('amt')), desc = f.get('desc').trim();
         if (!desc) { toast('Tulis dipakai untuk apa'); return false; }
         if (!(amt > 0)) { toast('Nominal harus lebih dari 0'); return false; }
         if (!okDate(f.get('date'))) { toast('Tanggal tidak valid'); return false; }
@@ -835,11 +880,65 @@ async function exportLap(t) {
   try { const L = lapData(); if (t === 'pdf') await exportPdf(L); else await exportXls(L); toast('Berhasil diunduh'); }
   catch (e) { toast('Gagal membuat file, cek koneksi internet lalu coba lagi'); }
 }
+/* ---------- QRIS ---------- */
+const crc16 = s => { let c = 0xFFFF; for (let i = 0; i < s.length; i++) { c ^= s.charCodeAt(i) << 8; for (let j = 0; j < 8; j++) c = c & 0x8000 ? ((c << 1) ^ 0x1021) & 0xFFFF : (c << 1) & 0xFFFF; } return c.toString(16).toUpperCase().padStart(4, '0'); };
+function tlv(s) {
+  const r = []; let i = 0;
+  while (i < s.length) {
+    if (i + 4 > s.length) return null;
+    const t = s.slice(i, i + 2), l = parseInt(s.slice(i + 2, i + 4), 10);
+    if (!/^\d{2}$/.test(t) || isNaN(l) || i + 4 + l > s.length) return null;
+    r.push([t, s.slice(i + 4, i + 4 + l)]); i += 4 + l;
+  }
+  return r;
+}
+const tlvStr = r => r.map(([t, v]) => t + String(v.length).padStart(2, '0') + v).join('');
+function qrisCheck(p) {
+  p = String(p || '').trim();
+  if (!/^000201/.test(p) || p.length < 12 || p.slice(-8, -4) !== '6304') return null;
+  if (crc16(p.slice(0, -4)) !== p.slice(-4).toUpperCase()) return null;
+  return tlv(p) ? p : null;
+}
+const qrisName = p => { const m = (tlv(p) || []).find(x => x[0] === '59'); return m ? m[1] : 'QRIS'; };
+function qrisAmount(p, amt) {
+  const r = tlv(p.slice(0, -8)); if (!r) return null;
+  const out = r.filter(x => x[0] !== '54').map(x => x[0] === '01' ? ['01', '12'] : x);
+  const i = out.findIndex(x => +x[0] > 54);
+  out.splice(i < 0 ? out.length : i, 0, ['54', String(Math.round(amt))]);
+  const body = tlvStr(out) + '6304';
+  return body + crc16(body);
+}
+function decodeQr(file) {
+  return loadLib('https://cdnjs.cloudflare.com/ajax/libs/jsQR/1.4.0/jsQR.min.js', () => window.jsQR).then(() => new Promise((res, rej) => {
+    const img = new Image(), u = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(u);
+      for (const mx of [1400, 900, 600]) {
+        const sc = Math.min(1, mx / Math.max(img.width, img.height)), cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(img.width * sc)); cv.height = Math.max(1, Math.round(img.height * sc));
+        const cx = cv.getContext('2d'); cx.drawImage(img, 0, 0, cv.width, cv.height);
+        const q = window.jsQR(cx.getImageData(0, 0, cv.width, cv.height).data, cv.width, cv.height, { inversionAttempts: 'attemptBoth' });
+        if (q && q.data) return res(q.data);
+      }
+      rej(new Error('qr'));
+    };
+    img.onerror = () => { URL.revokeObjectURL(u); rej(new Error('img')); };
+    img.src = u;
+  }));
+}
+async function qrSvg(text) {
+  await loadLib('https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js', () => window.qrcode);
+  const q = window.qrcode(0, 'M'); q.addData(text); q.make();
+  const n = q.getModuleCount(), m = 3; let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (q.isDark(r, c)) d += `M${c + m} ${r + m}h1v1h-1z`;
+  return `<svg viewBox="0 0 ${n + 2 * m} ${n + 2 * m}" shape-rendering="crispEdges" role="img" aria-label="QRIS"><rect width="100%" height="100%" fill="#fff"/><path d="${d}" fill="#000"/></svg>`;
+}
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act]');
-  if (t && RO && ['pay', 'addClass', 'editClass', 'delClass', 'addStudents', 'addStudent', 'editStudent', 'delStudent', 'delPay', 'addExp', 'delExp'].includes(t.dataset.act)) return toast('Mode lihat saja');
+  if (t && RO && ['pay', 'addClass', 'editClass', 'delClass', 'addStudents', 'addStudent', 'setTipe', 'qrisUp', 'qrisDel', 'editStudent', 'delStudent', 'delPay', 'addExp', 'delExp'].includes(t.dataset.act)) return toast('Mode lihat saja');
   if (t && ACT[t.dataset.act]) ACT[t.dataset.act](t.dataset.id, t);
 });
+document.addEventListener('input', e => { const t = e.target; if (t.classList && t.classList.contains('rp')) t.value = fmtN(Number(t.value.replace(/\D/g, '').slice(0, 12))); });
 document.addEventListener('change', e => { if (e.target.id === 'selClass') { ui.classId = e.target.value; const cc = C(); if (cc && cc.tipe) { ui.period = cc.tipe; ui.gper = null; } render(); } if (e.target.id === 'refDate') { const v = ui.period === 'm' ? e.target.value + '-01' : e.target.value; if (okDate(v)) { ui.ref = v; render(); } } });
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { const m = innerWidth < 640; if (m !== lastMobile && data) { lastMobile = m; render(); } }, 150); });
 
