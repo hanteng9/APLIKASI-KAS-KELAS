@@ -324,6 +324,25 @@ const pad = n => String(n).padStart(2, '0');
 const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const today = () => iso(new Date());
+const fotoOk = f => typeof f === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(f);
+const thumb = x => fotoOk(x.foto) ? `<img src="${x.foto}" alt="Struk" data-act="viewFoto" data-id="${x.id}" style="width:40px;height:40px;object-fit:cover;border-radius:10px;flex:none;cursor:pointer">` : '';
+let expFoto = '', expBusy = false;
+function packFoto(file) {
+  return new Promise((ok, no) => {
+    const r = new FileReader(); r.onerror = no;
+    r.onload = () => {
+      const im = new Image(); im.onerror = no;
+      im.onload = () => {
+        const k = Math.min(1, 800 / Math.max(im.width, im.height)), cv = document.createElement('canvas');
+        cv.width = Math.max(1, Math.round(im.width * k)); cv.height = Math.max(1, Math.round(im.height * k));
+        const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, cv.width, cv.height); g.drawImage(im, 0, 0, cv.width, cv.height);
+        ok(cv.toDataURL('image/jpeg', 0.5));
+      };
+      im.src = r.result;
+    };
+    r.readAsDataURL(file);
+  });
+}
 const addDays = (s, n) => { const d = parse(s); d.setDate(d.getDate() + n); return iso(d); };
 const weekStart = s => { const d = parse(s); d.setDate(d.getDate() - (d.getDay() + 6) % 7); return iso(d); };
 const dm = s => { const d = parse(s); return d.getDate() + ' ' + MON[d.getMonth()]; };
@@ -579,7 +598,7 @@ function vSiswa() {
 }
 function vKeluar() {
   const k = calc(), l = k.pout.slice().sort((a, b) => b.date.localeCompare(a.date));
-  const rows = l.map(x => `<div class="row"><span class="ico" style="background:${CATS[x.cat] || CATS.Lainnya}">${ic('cash')}</span><div class="t"><b>${esc(x.desc)}</b><small>${esc(x.cat)}, ${dmy(x.date)}</small></div><span class="amt out">${fmt(x.amount)}</span><button class="ib del" data-act="delExp" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div>`).join('');
+  const rows = l.map(x => `<div class="row"><span class="ico" style="background:${CATS[x.cat] || CATS.Lainnya}">${ic('cash')}</span><div class="t"><b>${esc(x.desc)}</b><small>${esc(x.cat)}, ${dmy(x.date)}</small></div>${thumb(x)}<span class="amt out">${fmt(x.amount)}</span><button class="ib del" data-act="delExp" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div>`).join('');
   return `<div class="hd"><div><h1>Pengeluaran</h1><p>Total ${fmt(k.outSum)} di periode ini</p></div><button class="btn" data-act="addExp">${ic('plus')}Catat pengeluaran</button></div>${toolbar()}
   <div class="card">${l.length ? `<div class="rows">${rows}</div>` : `<div class="empty">${ic('wallet', 'big')}<h3>Belum ada pengeluaran</h3><p>Catat apa saja yang dibeli pakai uang kas.</p></div>`}</div>`;
 }
@@ -615,7 +634,7 @@ function vRiwayat() {
   const l = [...(all ? k.allIn : k.pin).map(x => ({ ...x, t: 'in' })), ...(all ? k.allOut : k.pout).map(x => ({ ...x, t: 'out' }))].sort((a, b) => b.date.localeCompare(a.date));
   const rows = l.map(x => x.t === 'in'
     ? `<div class="row"><span class="ico" style="background:var(--teal)">${ic('plus')}</span><div class="t"><b>${esc(sname(k.c, x.studentId))}</b><small>${dmy(x.date)}${x.note ? ', ' + esc(x.note) : ''}</small></div><span class="amt in">+ ${fmt(x.amount)}</span><button class="ib del" data-act="delPay" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div>`
-    : `<div class="row"><span class="ico" style="background:${CATS[x.cat] || CATS.Lainnya}">${ic('cash')}</span><div class="t"><b>${esc(x.desc)}</b><small>${dmy(x.date)}, ${esc(x.cat)}</small></div><span class="amt out">- ${fmt(x.amount)}</span><button class="ib del" data-act="delExp" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div>`).join('');
+    : `<div class="row"><span class="ico" style="background:${CATS[x.cat] || CATS.Lainnya}">${ic('cash')}</span><div class="t"><b>${esc(x.desc)}</b><small>${dmy(x.date)}, ${esc(x.cat)}</small></div>${thumb(x)}<span class="amt out">- ${fmt(x.amount)}</span><button class="ib del" data-act="delExp" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div>`).join('');
   return `<div class="hd"><div><h1>Riwayat</h1><p>${all ? 'Total masuk ' + fmt(sumA(k.allIn)) + ', keluar ' + fmt(sumA(k.allOut)) + ', saldo ' + fmt(k.saldo) : 'Masuk ' + fmt(k.inSum) + ', keluar ' + fmt(k.outSum)}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-act="backup">${ic('dl')}Backup</button><button class="btn ghost" data-act="restore"><span style="display:inline-flex;transform:rotate(180deg)">${ic('dl')}</span>Pulihkan</button><button class="btn ghost" data-act="expPdf">${ic('dl')}PDF</button><button class="btn ghost" data-act="expXls">${ic('dl')}Excel</button><button class="btn" data-act="pay">${ic('plus')}Catat kas masuk</button></div></div>${toolbar()}
   ${vTbl(k)}<div class="card">${l.length ? `<div class="rows">${rows}</div>` : `<div class="empty">${ic('list', 'big')}<h3>Belum ada catatan</h3><p>Catatan kas masuk dan keluar periode ini muncul di sini.</p></div>`}</div>`;
 }
@@ -798,15 +817,32 @@ const ACT = {
       fld('Untuk apa', '<input name="desc" maxlength="60" required placeholder="Contoh: Spidol dan penghapus">') +
       fld('Kategori', `<select name="cat">${Object.keys(CATS).map(x => `<option>${x}</option>`).join('')}</select>`) +
       fld('Nominal (Rp)', '<input name="amt" type="text" inputmode="numeric" class="rp" required>') +
-      fld('Tanggal', `<input name="date" type="date" required value="${defDate()}">`),
+      fld('Tanggal', `<input name="date" type="date" required value="${defDate()}">`) +
+      fld('Foto struk (opsional)', '<input name="foto" type="file" accept="image/*"><div id="fotoPrev"></div>'),
       f => {
         const amt = parseRp(f.get('amt')), desc = f.get('desc').trim();
         if (!desc) { toast('Tulis dipakai untuk apa'); return false; }
         if (!(amt > 0)) { toast('Nominal harus lebih dari 0'); return false; }
         if (!okDate(f.get('date'))) { toast('Tanggal tidak valid'); return false; }
-        data.expenses.push({ id: uid(), classId: c.id, amount: amt, date: f.get('date'), desc, cat: f.get('cat') });
+        if (expBusy) { toast('Foto masih diproses, tunggu sebentar'); return false; }
+        if (expFoto && JSON.stringify(data).length + expFoto.length > 900000) { toast('Ruang penyimpanan foto penuh. Hapus struk lama atau kosongkan foto'); return false; }
+        data.expenses.push({ id: uid(), classId: c.id, amount: amt, date: f.get('date'), desc, cat: f.get('cat'), ...(expFoto ? { foto: expFoto } : {}) });
+        expFoto = '';
         save(); render(); toast('Catatan tersimpan');
       });
+    expFoto = ''; expBusy = false;
+    const fi = $('#dlg input[name=foto]'), pv = $('#fotoPrev');
+    fi.onchange = async () => {
+      const file = fi.files && fi.files[0]; expFoto = ''; pv.innerHTML = ''; if (!file) return;
+      expBusy = true; pv.textContent = 'Memproses foto...';
+      try { expFoto = await packFoto(file); pv.innerHTML = `<img src="${expFoto}" alt="Struk" style="max-width:100%;max-height:160px;border-radius:10px;margin-top:8px">`; }
+      catch (e) { expFoto = ''; pv.textContent = ''; fi.value = ''; toast('Foto tidak bisa dibaca'); }
+      expBusy = false;
+    };
+  },
+  viewFoto: id => {
+    const x = data.expenses.find(e => e.id === id); if (!x || !fotoOk(x.foto)) return;
+    modal('Foto struk', `<img src="${x.foto}" alt="Struk" style="width:100%;border-radius:12px">`, () => {}, 'Tutup');
   },
   delExp: id => ask('Hapus catatan pengeluaran ini?', () => { data.expenses = data.expenses.filter(x => x.id !== id); save(); render(); toast('Catatan tersimpan'); }),
   expPdf: () => exportLap('pdf'),
