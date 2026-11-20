@@ -687,6 +687,18 @@ const ACT = {
   }, 'Reset'),
   ownView: id => { RO = id; data = OWND[id] ? OWND[id].d : normalize(null); ui = { classId: null, period: 'w', ref: today(), page: 'home' }; render(); window.scrollTo(0, 0); },
   ownBack: () => { RO = null; data = normalize(null); ui.page = 'admin'; render(); window.scrollTo(0, 0); },
+  ownDel: id => {
+    const x = OWN.find(u => u.id === id); if (!x) return;
+    ask(`Akun ${esc(x.email || id)} beserta semua kelas, siswa, dan catatan kasnya akan dihapus.`, async () => {
+      try {
+        const b = fb.fs.batch();
+        b.delete(fb.fs.collection('users').doc(id));
+        b.delete(fb.fs.collection('kaskelas').doc(id));
+        if (UNM[id]) b.delete(fb.fs.collection('usernames').doc(unKey(UNM[id].toLowerCase())));
+        await b.commit(); toast('Akun dihapus');
+      } catch (e) { toast('Gagal, cek aturan Firestore'); }
+    });
+  },
   ownDelClass: (id, t) => {
     const D = ownD(id), c = D.classes.find(k => k.id === t.dataset.cid); if (!c) return;
     ask(`Kelas ${esc(c.name)} beserta semua siswa dan catatan kasnya akan dihapus.`, async () => {
@@ -1321,7 +1333,7 @@ function vAdmin() {
     return `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(UNM[x.id] || x.email || '?'))}</span><div class="t"><b>${esc(UNM[x.id] || x.email || x.id)}</b><small>${UNM[x.id] ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div>
     <div class="own" style="margin:8px 0"><div class="stat"><span>Masuk</span><b>${fmt(inn)}</b></div><div class="stat"><span>Keluar</span><b>${fmt(out)}</b></div><div class="stat"><span>Saldo</span><b>${fmt(inn - out)}</b></div></div>
     <p class="cap" style="margin-bottom:6px">${D.classes.length} kelas, ${sw} siswa, ${D.payments.length + D.expenses.length} catatan. Aktivitas terakhir: ${o && o.t ? new Date(o.t).toLocaleString('id-ID') : 'belum ada'}</p>${cl ? `<div class="rows">${cl}</div>` : ''}
-    <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button><button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button></div></div>`;
+    <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button><button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button></div></div>`;
   }).join('');
   return `<div class="hd"><div><h1>Admin</h1><p>Pantau semua bendahara, langsung saat ada perubahan</p></div></div>
   <section class="own"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat"><span>Total masuk</span><b>${fmt(tin)}</b></div><div class="stat"><span>Total saldo</span><b>${fmt(tin - tout)}</b></div></section>
