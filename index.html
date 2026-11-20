@@ -194,6 +194,20 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
   .pill{padding:10px;gap:9px}.av{width:36px;height:36px;font-size:13px}
   #toast{bottom:100px}
 }
+/* perbaikan hp + PIN + dashboard */
+.row .t small{display:block;overflow-wrap:anywhere}
+.acts{display:flex;align-items:center;gap:6px;flex:none}
+.mtop .brand{min-width:0}.mtop .brand b{white-space:nowrap}
+.pin{letter-spacing:.55em;text-align:center;font:600 26px Fredoka,sans-serif;padding-left:calc(14px + .55em)!important}
+.lnk{display:block;margin:-6px 0 14px auto;padding:6px 0;font-weight:800;font-size:13px;color:var(--tealD)}
+.acard.c{text-align:center}.acard.c .logo{display:block;margin:0 auto}
+.own{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.own .stat{padding:14px}.own .stat b{font-size:24px}
+@media(max-width:600px){
+  .row.s{flex-wrap:wrap}.row.s .t{flex:1 1 0;min-width:0}
+  .row.s .acts{flex:1 1 100%;justify-content:flex-end}
+  .row .amt{font-size:14px}.own .stat span{font-size:12px}
+}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -226,7 +240,8 @@ const IC = {
   r:'<path d="M9 6l6 6-6 6"/>',
   check:'<path d="M5 12l5 5 9-10"/>',
   cash:'<circle cx="12" cy="12" r="8.5"/><path d="M12 7v10M9.5 9.5c0-1 1-1.7 2.5-1.7s2.5.7 2.5 1.7-1 1.4-2.5 1.7-2.5.7-2.5 1.7 1 1.7 2.5 1.7 2.5-.7 2.5-1.7"/>',
-  chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>'
+  chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  key:'<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M16 7l3 3"/>'
 };
 const ic = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true">${IC[n]}</svg>`;
 const GOOGLE = '<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.9 2.4 30.4 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.2 5.5-4.7 7.2l7.6 5.9c4.4-4.1 6.9-10.2 6.9-17.6z"/><path fill="#FBBC05" d="M10.5 28.7a14.5 14.5 0 0 1 0-9.4l-7.9-6.1a24 24 0 0 0 0 21.6l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.6-5.9c-2.1 1.4-4.9 2.3-8.3 2.3-6.3 0-11.6-4.1-13.5-9.8l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>';
@@ -307,7 +322,7 @@ async function sync() {
 async function loadData() {
   let d = null;
   try { d = JSON.parse(localStorage.getItem('kk_data_' + user.uid)); } catch (e) {}
-  if (fb && navigator.onLine && !localStorage.getItem('kk_dirty_' + user.uid)) {
+  if (!d && fb && navigator.onLine) {
     try {
       const doc = await Promise.race([fb.fs.collection('kaskelas').doc(user.uid).get(), new Promise((_, no) => setTimeout(no, 4000))]);
       if (doc.exists) { d = JSON.parse(doc.data().json); try { localStorage.setItem('kk_data_' + user.uid, JSON.stringify(d)); } catch (e) {} }
@@ -436,9 +451,9 @@ function shell(view) {
     <button class="nav install" data-act="install" hidden>${ic('dl')}Download aplikasi</button>
     <button class="nav install" data-act="apk" hidden>${ic('dl')}Download APK</button>
     <div class="me">${esc(user.email || user.name || '')}</div>
-    <button class="nav" data-act="logout">${ic('out')}Keluar akun</button></aside>
+    ${fb ? `<button class="nav" data-act="chpin">${ic('key')}Ganti PIN</button>` : ''}<button class="nav" data-act="logout">${ic('out')}Keluar akun</button></aside>
   <div><header class="mtop"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>
-    <div><button class="btn sm ghost install" data-act="install" hidden>Download</button> <button class="btn sm ghost install" data-act="apk" hidden>APK</button><button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
+    <div><button class="btn sm ghost install" data-act="apk" hidden>Unduh APK</button>${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
   <main class="main">${view}</main></div></div>
   <nav class="bnav" aria-label="Menu">${nav('b')}</nav>`;
 }
@@ -475,8 +490,8 @@ function vHome() {
 }
 function vSiswa() {
   const k = calc(), c = k.c;
-  const list = c.students.map((s, i) => `<div class="row"><span class="nm">${i + 1}</span>${avatar(s, i)}<div class="t"><b>${esc(s.name)}</b><small>Total setor ${fmt(sumA(k.allIn.filter(x => x.studentId === s.id)))}</small></div>
-    <button class="btn sm ghost" data-act="pay" data-id="${s.id}">Bayar</button><button class="ib" data-act="editStudent" data-id="${s.id}" aria-label="Ubah ${esc(s.name)}">${ic('edit')}</button><button class="ib del" data-act="delStudent" data-id="${s.id}" aria-label="Hapus ${esc(s.name)}">${ic('trash')}</button></div>`).join('');
+  const list = c.students.map((s, i) => `<div class="row s"><span class="nm">${i + 1}</span>${avatar(s, i)}<div class="t"><b>${esc(s.name)}</b><small>Total setor ${fmt(sumA(k.allIn.filter(x => x.studentId === s.id)))}</small></div>
+    <div class="acts"><button class="btn sm ghost" data-act="pay" data-id="${s.id}">Bayar</button><button class="ib" data-act="editStudent" data-id="${s.id}" aria-label="Ubah ${esc(s.name)}">${ic('edit')}</button><button class="ib del" data-act="delStudent" data-id="${s.id}" aria-label="Hapus ${esc(s.name)}">${ic('trash')}</button></div></div>`).join('');
   return `<div class="hd"><div><h1>Siswa</h1><p>${c.students.length} siswa di kelas ${esc(c.name)}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-act="addClass">${ic('plus')}Kelas baru</button><button class="btn" data-act="addStudents">${ic('plus')}Tambah siswa</button></div></div>
   <div class="bar"><label class="sel"><select id="selClass" aria-label="Pilih kelas">${data.classes.map(x => `<option value="${x.id}" ${x.id === c.id ? 'selected' : ''}>${esc(x.name)}</option>`).join('')}</select></label>
   <button class="btn sm ghost" data-act="editClass">${ic('edit')}Ubah kelas</button><button class="btn sm warn" data-act="delClass">${ic('trash')}Hapus kelas</button></div>
@@ -529,7 +544,7 @@ const ACT = {
   logout: async () => {
     if (unsub) { unsub(); unsub = null; }
     if (fb) await fb.auth.signOut(); else localStorage.removeItem('kk_session');
-    localStorage.removeItem('kk_fbsess');
+    localStorage.removeItem('kk_fbsess'); sessionStorage.removeItem('kk_pin_ok'); prof = null;
     user = null; data = null; mode = 'in'; showAuth();
   },
   install: async () => {
@@ -537,13 +552,34 @@ const ACT = {
     else toast('Buka menu browser lalu pilih "Pasang aplikasi" atau "Tambahkan ke layar utama"');
   },
   apk: async () => {
+    const repo = (window.KAS_CONFIG || {}).githubRepo || location.hostname.split('.')[0] + '/' + location.pathname.split('/')[1];
+    toast('Mencari APK terbaru...');
     try {
-      const r = await fetch('kas-kelas.apk', { method: 'HEAD', cache: 'no-store' });
-      if (!r.ok) throw 0;
-      const a = document.createElement('a'); a.href = 'kas-kelas.apk'; a.download = 'kas-kelas.apk';
-      document.body.appendChild(a); a.click(); a.remove(); toast('Mengunduh APK');
-    } catch (e) { toast('File kas-kelas.apk belum ada di server'); }
+      const r = await fetch('https://api.github.com/repos/' + repo + '/releases/latest');
+      const a = ((await r.json()).assets || []).find(x => /\.apk$/i.test(x.name));
+      if (!a) throw 0;
+      location.href = a.browser_download_url; toast('Mengunduh ' + a.name);
+    } catch (e) { toast('APK belum ada di GitHub Release'); window.open('https://github.com/' + repo + '/releases', '_blank'); }
   },
+  chpin: () => modal('Ganti PIN',
+    fld('PIN lama', '<input name="o" type="password" inputmode="numeric" maxlength="6" autocomplete="off" required>') +
+    fld('PIN baru (6 angka)', '<input name="n" type="password" inputmode="numeric" maxlength="6" autocomplete="off" required>') +
+    fld('Ulangi PIN baru', '<input name="c" type="password" inputmode="numeric" maxlength="6" autocomplete="off" required>'), f => {
+      const o = f.get('o'), n = f.get('n');
+      if (!/^\d{6}$/.test(n)) { toast('PIN baru harus 6 angka'); return false; }
+      if (n !== f.get('c')) { toast('PIN baru tidak sama'); return false; }
+      pinH(o).then(async h => { if (h !== prof.pinHash) return toast('PIN lama salah'); await savePin(n); toast('PIN berhasil diganti'); }).catch(() => toast('Gagal mengganti PIN'));
+    }, 'Ganti'),
+  ownTog: async id => {
+    const x = OWN.find(u => u.id === id);
+    try { await fb.fs.collection('users').doc(id).update({ active: !x.active }); toast(x.active ? 'Bendahara dinonaktifkan' : 'Bendahara diaktifkan'); } catch (e) { toast('Gagal, cek aturan Firestore'); }
+    showOwner();
+  },
+  ownPin: id => ask('PIN bendahara ini dihapus. Ia akan membuat PIN baru saat masuk berikutnya.', async () => {
+    try { await fb.fs.collection('users').doc(id).update({ pinHash: null }); toast('PIN direset'); } catch (e) { toast('Gagal reset PIN'); }
+    showOwner();
+  }, 'Reset'),
+  recheck: () => gate(user),
   addClass: () => modal('Kelas baru', classForm(), f => {
     const v = readClass(f); if (!v) return false;
     const c = { id: uid(), name: v.name, iuran: v.iuran, students: [] };
@@ -637,7 +673,7 @@ async function initFb() {
   if (!c || !c.apiKey || !c.projectId) return false;
   try {
     const v = '10.12.2', b = `https://www.gstatic.com/firebasejs/${v}/firebase-`;
-    await loadScript(b + 'app-compat.js'); await loadScript(b + 'auth-compat.js'); await loadScript(b + 'firestore-compat.js');
+    await loadScript(b + 'app-compat.js'); await Promise.all([loadScript(b + 'auth-compat.js'), loadScript(b + 'firestore-compat.js')]);
     firebase.initializeApp(c);
     fb = { auth: firebase.auth(), fs: firebase.firestore() };
     return true;
@@ -661,6 +697,7 @@ function showAuth() {
     <form id="af" novalidate>
       <div class="f"><label for="em">Email</label><input id="em" type="email" autocomplete="email" inputmode="email" placeholder="nama@gmail.com" required></div>
       <div class="f"><label for="pw">Password</label><div class="pw"><input id="pw" type="password" autocomplete="${up ? 'new-password' : 'current-password'}" minlength="6" placeholder="Minimal 6 karakter" required><button type="button" id="seepw">Lihat</button></div></div>
+      ${up ? '' : '<button type="button" class="lnk" id="fpw">Lupa password?</button>'}
       <button class="btn block" id="abtn">${up ? 'Daftar' : 'Masuk'}</button>
     </form>
     <div class="or">atau</div>
@@ -672,6 +709,7 @@ function showAuth() {
   document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; showAuth(); });
   $('#seepw').onclick = () => { const p = $('#pw'); p.type = p.type === 'password' ? 'text' : 'password'; $('#seepw').textContent = p.type === 'password' ? 'Lihat' : 'Sembunyi'; };
   $('#af').onsubmit = submitAuth;
+  const fw = $('#fpw'); if (fw) fw.onclick = forgot;
   $('#gbtn').onclick = googleLogin;
   const sp = $('#splash'); if (sp) sp.remove();
 }
@@ -680,7 +718,7 @@ async function submitAuth(e) {
   const em = $('#em').value.trim().toLowerCase(), pw = $('#pw').value, btn = $('#abtn');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return toast('Format email tidak valid');
   if (pw.length < 6) return toast('Password minimal 6 karakter');
-  btn.disabled = true;
+  btn.disabled = true; btn.textContent = 'Memproses...';
   try {
     if (fb) {
       if (mode === 'in') await fb.auth.signInWithEmailAndPassword(em, pw);
@@ -694,7 +732,93 @@ async function submitAuth(e) {
       await enter(s);
     }
   } catch (err) { toast(errMsg(err)); }
-  const b2 = $('#abtn'); if (b2) b2.disabled = false;
+  const b2 = $('#abtn'); if (b2) { b2.disabled = false; b2.textContent = mode === 'up' ? 'Daftar' : 'Masuk'; }
+}
+async function forgot() {
+  const em = $('#em').value.trim().toLowerCase();
+  if (!fb) return toast('Fitur ini butuh Firebase aktif');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return toast('Isi email dulu di kolom Email');
+  try { await fb.auth.sendPasswordResetEmail(em); toast('Link reset password dikirim ke ' + em + '. Cek inbox atau spam'); } catch (e) { toast(errMsg(e)); }
+}
+
+/* ---------- profil, PIN, peran (disimpan di database) ---------- */
+let prof = null, OWN = [];
+const pinH = p => hash(user.uid + ':kk:' + p);
+const hideSplash = () => { const sp = $('#splash'); if (sp) sp.remove(); };
+async function savePin(p) {
+  const h = await pinH(p);
+  await fb.fs.collection('users').doc(user.uid).update({ pinHash: h, pinAt: Date.now() });
+  prof.pinHash = h; cacheProf();
+}
+const cacheProf = () => { try { localStorage.setItem('kk_prof_' + user.uid, JSON.stringify(prof)); } catch (e) {} };
+async function gate(s) {
+  user = s;
+  try {
+    const ref = fb.fs.collection('users').doc(s.uid), d = await ref.get();
+    if (d.exists) prof = d.data();
+    else { prof = { email: s.email || '', role: 'admin', active: false, pinHash: null, createdAt: Date.now() }; await ref.set(prof); }
+    cacheProf();
+  } catch (e) {
+    try { prof = JSON.parse(localStorage.getItem('kk_prof_' + s.uid)); } catch (x) {}
+    if (!prof) { toast('Gagal memuat akun, cek koneksi internet'); await fb.auth.signOut(); user = null; return showAuth(); }
+  }
+  if (prof.role !== 'owner' && !prof.active) return showPending();
+  if (sessionStorage.getItem('kk_pin_ok') === s.uid) return start();
+  showPin();
+}
+const start = () => prof.role === 'owner' ? showOwner() : enter(user);
+function showPending() {
+  hideSplash();
+  $('#app').innerHTML = `<div class="auth" style="grid-template-columns:1fr"><section class="formside"><div class="acard c"><img class="logo" src="icon.svg" alt=""><h1>Menunggu aktivasi</h1><p class="sub">Akun ${esc(user.email || '')} sudah terdaftar. Pengelola aplikasi perlu mengaktifkannya dulu sebagai bendahara.</p><button class="btn block" data-act="recheck">Cek lagi</button><button class="btn warn block instl" data-act="logout">Keluar akun</button></div></section></div>`;
+}
+function showPin() {
+  hideSplash();
+  let first = null, tries = 0;
+  const has = !!prof.pinHash;
+  const draw = () => {
+    const [t, sub] = !has ? (first ? ['Ulangi PIN', 'Masukkan PIN yang sama sekali lagi.'] : ['Buat PIN', 'Buat PIN 6 angka. PIN ini sama di semua HP dan laptopmu.']) : ['Masukkan PIN', 'Masukkan PIN 6 angka untuk membuka kas kelas.'];
+    $('#app').innerHTML = `<div class="auth" style="grid-template-columns:1fr"><section class="formside"><div class="acard c"><img class="logo" src="icon.svg" alt=""><h1>${t}</h1><p class="sub">${sub}</p><div class="f"><input id="pin" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="PIN"></div>${has ? '<button class="btn ghost block" id="fp" type="button">Lupa PIN?</button>' : ''}<button class="btn warn block instl" id="lo" type="button">Keluar akun</button></div></section></div>`;
+    const i = $('#pin'); i.focus();
+    i.oninput = () => { i.value = i.value.replace(/\D/g, ''); if (i.value.length === 6) done(i.value); };
+    $('#lo').onclick = ACT.logout;
+    const f = $('#fp'); if (f) f.onclick = forgotPin;
+  };
+  const pass = () => { sessionStorage.setItem('kk_pin_ok', user.uid); start(); };
+  const done = async p => {
+    $('#pin').disabled = true;
+    try {
+      if (!has) {
+        if (!first) { first = p; return draw(); }
+        if (p !== first) { first = null; toast('PIN tidak sama, ulangi dari awal'); return draw(); }
+        await savePin(p); return pass();
+      }
+      if (Date.now() < (+localStorage.getItem('kk_lock') || 0)) { toast('Terlalu banyak salah, tunggu 30 detik'); return draw(); }
+      if (await pinH(p) === prof.pinHash) return pass();
+      if (++tries >= 5) { localStorage.setItem('kk_lock', Date.now() + 30000); tries = 0; toast('Salah 5 kali, coba lagi 30 detik'); } else toast('PIN salah');
+      draw();
+    } catch (e) { toast('Gagal memproses PIN'); draw(); }
+  };
+  draw();
+}
+async function reauth(pw) {
+  const u = fb.auth.currentUser;
+  if (u.providerData.some(p => p.providerId === 'password')) await u.reauthenticateWithCredential(firebase.auth.EmailAuthProvider.credential(u.email, pw));
+  else await u.reauthenticateWithPopup(new firebase.auth.GoogleAuthProvider());
+}
+function forgotPin() {
+  modal('Lupa PIN', '<p class="msg">Masukkan password akun untuk membuat PIN baru. Kosongkan jika kamu masuk dengan Google.</p>' + fld('Password', '<input name="pw" type="password" autocomplete="current-password">'), f => {
+    reauth(f.get('pw')).then(() => fb.fs.collection('users').doc(user.uid).update({ pinHash: null })).then(() => { prof.pinHash = null; cacheProf(); showPin(); }).catch(e => toast(errMsg(e)));
+  }, 'Lanjut');
+}
+async function showOwner() {
+  hideSplash();
+  $('#app').innerHTML = '<main class="main" style="margin:auto"><p class="msg">Memuat...</p></main>';
+  try { OWN = (await fb.fs.collection('users').get()).docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner'); } catch (e) { toast('Gagal memuat pengguna'); }
+  const on = OWN.filter(x => x.active).length;
+  const rows = OWN.map((x, i) => `<div class="row s"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(x.email || '?'))}</span><div class="t"><b>${esc(x.email || x.id)}</b><small><span class="chip ${x.active ? 'ok' : 'mid'}">${x.active ? 'Aktif' : 'Menunggu'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div><div class="acts"><button class="btn sm ${x.active ? 'warn' : ''}" data-act="ownTog" data-id="${x.id}">${x.active ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button></div></div>`).join('');
+  $('#app').innerHTML = `<main class="main" style="margin:auto"><div class="hd"><div><h1>Dashboard Pengelola</h1><p>${esc(user.email || '')}</p></div><div class="acts"><button class="btn sm ghost" data-act="chpin">${ic('key')}Ganti PIN</button><button class="btn sm warn" data-act="logout">${ic('out')}Keluar</button></div></div>
+  <section class="own"><div class="stat hero"><span>Bendahara</span><b>${OWN.length}</b></div><div class="stat"><span>Aktif</span><b>${on}</b></div><div class="stat"><span>Menunggu</span><b>${OWN.length - on}</b></div></section>
+  <div class="card"><h3>Akun bendahara</h3><p class="cap">Aktifkan akun baru agar bisa memakai aplikasi.</p>${OWN.length ? `<div class="rows">${rows}</div>` : '<div class="empty"><p>Belum ada bendahara yang mendaftar.</p></div>'}</div></main>`;
 }
 async function googleLogin() {
   if (!fb) return toast('Login Google belum aktif');
@@ -714,7 +838,7 @@ async function enter(s) {
       if (u) {
         const s = { uid: u.uid, email: u.email, name: u.displayName || (u.email || '').split('@')[0] };
         try { localStorage.setItem('kk_fbsess', JSON.stringify(s)); } catch (e) {}
-        enter(s);
+        gate(s);
       } else {
         localStorage.removeItem('kk_fbsess');
         if (!user) showAuth();
