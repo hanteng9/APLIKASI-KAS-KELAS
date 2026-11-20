@@ -874,8 +874,8 @@ async function googleLogin() {
   try {
     const cap = window.Capacitor;
     if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
-      const P = (cap.Plugins || {}).FirebaseAuthentication || cap.registerPlugin('FirebaseAuthentication');
-      const r = await P.signInWithGoogle({ skipNativeAuth: true });
+      const P = (cap.Plugins || {}).FirebaseAuthentication;
+      const r = P ? await P.signInWithGoogle({ skipNativeAuth: true }) : await cap.nativePromise('FirebaseAuthentication', 'signInWithGoogle', { skipNativeAuth: true });
       const t = r && r.credential && r.credential.idToken;
       if (!t) throw { message: 'Token Google tidak diterima, coba lagi' };
       await fb.auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(t));
