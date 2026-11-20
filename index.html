@@ -687,6 +687,16 @@ const ACT = {
   }, 'Reset'),
   ownView: id => { RO = id; data = OWND[id] ? OWND[id].d : normalize(null); ui = { classId: null, period: 'w', ref: today(), page: 'home' }; render(); window.scrollTo(0, 0); },
   ownBack: () => { RO = null; data = normalize(null); ui.page = 'admin'; render(); window.scrollTo(0, 0); },
+  ownDelClass: (id, t) => {
+    const D = ownD(id), c = D.classes.find(k => k.id === t.dataset.cid); if (!c) return;
+    ask(`Kelas ${esc(c.name)} beserta semua siswa dan catatan kasnya akan dihapus.`, async () => {
+      const nd = normalize(JSON.parse(JSON.stringify(D)));
+      nd.classes = nd.classes.filter(k => k.id !== c.id);
+      nd.payments = nd.payments.filter(k => k.classId !== c.id);
+      nd.expenses = nd.expenses.filter(k => k.classId !== c.id);
+      try { await fb.fs.collection('kaskelas').doc(id).set({ json: JSON.stringify(nd), t: Date.now() }); toast('Kelas dihapus'); } catch (e) { toast('Gagal, cek aturan Firestore'); }
+    });
+  },
   ownCopy: id => navigator.clipboard.writeText(ownText(id)).then(() => toast('Data disalin'), () => toast('Gagal menyalin')),
   recheck: () => gate(user),
   addClass: () => modal('Kelas baru', classForm(), f => {
@@ -1307,7 +1317,7 @@ function vAdmin() {
   const tin = all.reduce((a, D) => a + sumA(D.payments), 0), tout = all.reduce((a, D) => a + sumA(D.expenses), 0);
   const cards = OWN.map((x, i) => {
     const D = ownD(x.id), o = OWND[x.id], inn = sumA(D.payments), out = sumA(D.expenses), sw = D.classes.reduce((a, c) => a + c.students.length, 0);
-    const cl = D.classes.map(c => { const a = sumA(D.payments.filter(p => p.classId === c.id)), b = sumA(D.expenses.filter(p => p.classId === c.id)); return `<div class="row"><div class="t"><b>${esc(c.name)}</b><small>${c.students.length} siswa, masuk ${fmt(a)}, keluar ${fmt(b)}</small></div><span class="amt in">${fmt(a - b)}</span></div>`; }).join('');
+    const cl = D.classes.map(c => { const a = sumA(D.payments.filter(p => p.classId === c.id)), b = sumA(D.expenses.filter(p => p.classId === c.id)); return `<div class="row"><div class="t"><b>${esc(c.name)}</b><small>${c.students.length} siswa, masuk ${fmt(a)}, keluar ${fmt(b)}</small></div><span class="amt in">${fmt(a - b)}</span><button class="ib del" data-act="ownDelClass" data-id="${x.id}" data-cid="${c.id}" aria-label="Hapus kelas ${esc(c.name)}">${ic('trash')}</button></div>`; }).join('');
     return `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(UNM[x.id] || x.email || '?'))}</span><div class="t"><b>${esc(UNM[x.id] || x.email || x.id)}</b><small>${UNM[x.id] ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div>
     <div class="own" style="margin:8px 0"><div class="stat"><span>Masuk</span><b>${fmt(inn)}</b></div><div class="stat"><span>Keluar</span><b>${fmt(out)}</b></div><div class="stat"><span>Saldo</span><b>${fmt(inn - out)}</b></div></div>
     <p class="cap" style="margin-bottom:6px">${D.classes.length} kelas, ${sw} siswa, ${D.payments.length + D.expenses.length} catatan. Aktivitas terakhir: ${o && o.t ? new Date(o.t).toLocaleString('id-ID') : 'belum ada'}</p>${cl ? `<div class="rows">${cl}</div>` : ''}
