@@ -93,6 +93,7 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .hd{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px}
 .hd h1{font-size:30px;line-height:1.15}
 .hd p{color:var(--mut)}
+.hmob{display:none}
 
 /* toolbar */
 .bar{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
@@ -187,6 +188,7 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
   .bnav button{display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;border-radius:14px;color:var(--mut);font-size:12px;font-weight:800;min-height:52px}
   .bnav button.on{color:var(--tealD);background:var(--tealL)}
   .hd h1{font-size:25px}
+  .hdesk{display:none}.hmob{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
   .stat b{font-size:23px}
   .pnav span{min-width:0;flex:1}.pnav{flex:1 1 100%}
   .seg{flex:1 1 100%}.seg button{flex:1;padding:0 6px}
@@ -683,7 +685,7 @@ function shell(view) {
     <div class="me"><b style="display:block;color:var(--tealD)">${roleLbl(prof)}</b>${esc(user.email || user.name || '')}</div>
     ${fb && prof && prof.role !== 'owner' && !isSw(prof) ? `<button class="nav" data-act="myToken">${ic('users')}Kode kelas</button>` : ''}${fb ? `<button class="nav" data-act="chpin">${ic('key')}Ganti PIN</button>` : ''}<button class="nav" data-act="logout">${ic('out')}Keluar akun</button></aside>
   <div><header class="mtop"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>
-    <div><span class="chip ok">${roleLbl(prof)}</span><button class="btn sm ghost install" data-act="install" hidden>Pasang Aplikasi</button>${fb && prof && prof.role !== 'owner' && !isSw(prof) ? `<button class="btn sm" data-act="myToken">Kode kelas</button>` : ''}${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
+    <div>${isTr() ? '' : `<span class="chip ok">${roleLbl(prof)}</span>`}<button class="btn sm ghost install" data-act="install" hidden>Pasang Aplikasi</button>${fb && prof && prof.role !== 'owner' && !isSw(prof) && !isTr() ? `<button class="btn sm" data-act="myToken">Kode kelas</button>` : ''}${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
   <main class="main">${view}</main></div></div>
   <nav class="bnav ${N.length > 4 ? 'five' : ''}" style="grid-template-columns:repeat(${N.length},1fr)" aria-label="Menu">${nav('b')}</nav>`;
 }
@@ -695,6 +697,8 @@ function toolbar() {
   <div class="seg">${seg}</div>
   <div class="pnav" ${rAll ? 'hidden' : ''}><div class="pn1"><button class="ib" data-act="prev" aria-label="Sebelumnya">${ic('l')}</button><span>${esc(plabel(ui.period, ui.ref))}</span><button class="ib" data-act="next" aria-label="Berikutnya">${ic('r')}</button></div><div class="pn2"><input type="${ui.period === 'm' ? 'month' : 'date'}" id="refDate" class="rdate" value="${ui.period === 'm' ? ui.ref.slice(0, 7) : ui.ref}" aria-label="Pilih tanggal"><button class="today" data-act="now">Hari ini</button></div></div></div>`;
 }
+const isTr = () => !!(fb && prof && prof.role !== 'owner' && !isSw(prof) && !RO);
+const mobHd = () => isTr() ? `<div class="hmob"><span class="chip ok">${roleLbl(prof)}</span><button class="btn sm" data-act="myToken">Kode kelas</button></div>` : '';
 const noClass = () => `<div class="card empty">${ic('users', 'big')}<h3>Belum ada kelas</h3><p>Buat kelas dulu, lalu tambahkan nama-nama siswanya.</p><button class="btn" data-act="addClass">${ic('plus')}Buat kelas</button></div>`;
 
 function vHome() {
@@ -704,7 +708,7 @@ function vHome() {
   const items = k.pout.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map(x => `<div class="row x"><span class="ico" style="background:${CATS[x.cat] || CATS.Lainnya}">${ic('cash')}</span><div class="t"><b>${esc(x.desc)}</b><small>${dsh(x.date)} · ${esc(x.cat)}</small></div><div class="xr"><span class="amt out">${fmt(x.amount)}</span></div></div>`).join('');
   const roster = n ? c.students.map((s, i) => { const [cl, tx, p] = statusOf(k, s.id); return `<button class="pill" data-act="pay" data-id="${s.id}"><span class="nm">${s.no || i + 1}</span>${avatar(s, i)}<span class="t"><b>${esc(s.name)}</b><span class="chip ${cl}">${tx}${p > 0 ? ' ' + fmtK(p) : ''}</span></span></button>`; }).join('')
     : `<div class="empty">${ic('users', 'big')}<h3>Kelas masih kosong</h3><button class="btn" data-act="addStudents">${ic('plus')}Tambah siswa</button></div>`;
-  return `<div class="hd"><div><h1>Halo, ${first || 'Bendahara'}!</h1><p>Ringkasan kas kelas ${esc(c.name)}</p></div><button class="btn" data-act="pay">${ic('plus')}Catat kas masuk</button></div>
+  return `<div class="hd"><div><h1${isTr() ? ' class="hdesk"' : ''}>Halo, ${first || 'Bendahara'}!</h1>${mobHd()}<p>Ringkasan kas kelas ${esc(c.name)}</p></div><button class="btn" data-act="pay">${ic('plus')}Catat kas masuk</button></div>
   ${toolbar()}
   <section class="stats">
     <div class="stat hero"><span>${ic('wallet')}Saldo kas</span><b>${fmt(k.saldo)}</b><small>Total masuk ${fmt(sumA(k.allIn))}</small><small>Total keluar ${fmt(sumA(k.allOut))}</small></div>
@@ -777,7 +781,7 @@ function vRiwayat() {
 function render() {
   const keep = window.scrollY;
   document.body.classList.toggle('ro', !!RO);
-  let v = ui.page === 'admin' && !RO ? vAdmin() : !data.classes.length ? `<div class="hd"><div><h1>Halo, ${esc((user.name || user.email || 'Bendahara').split(/[@\s]/)[0])}!</h1><p>Mulai dari membuat kelas.</p></div></div>${noClass()}`
+  let v = ui.page === 'admin' && !RO ? vAdmin() : !data.classes.length ? `<div class="hd"><div><h1${isTr() ? ' class="hdesk"' : ''}>Halo, ${esc((user.name || user.email || 'Bendahara').split(/[@\s]/)[0])}!</h1>${mobHd()}<p>Mulai dari membuat kelas.</p></div></div>${noClass()}`
     : ui.page === 'siswa' ? vSiswa() : ui.page === 'keluar' ? vKeluar() : ui.page === 'riwayat' ? vRiwayat() : ui.page === 'ai' && !RO ? vAI() : vHome();
   if (RO) v = roBanner() + v;
   $('#app').innerHTML = shell(v);
@@ -1429,6 +1433,34 @@ function pickRole() {
     document.querySelectorAll('[data-role]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-role]').forEach(x => x.disabled = true); ok(b.dataset.role); });
   });
 }
+async function ensureUname(s) {
+  const has = async n => { try { const d = await fb.fs.collection('usernames').doc(unKey(String(n).toLowerCase())).get(); return d.exists && d.data().uid === s.uid; } catch (e) { return null; } };
+  const nm = [prof.uname, s.name].filter(Boolean);
+  for (let t = 0; t < 2; t++) {
+    for (const n of nm) { const r = await has(n); if (r === null || r) return; }
+    if (!nm.length) break;
+    if (t === 0) await new Promise(r => setTimeout(r, 1500));
+  }
+  hideSplash();
+  await new Promise(ok => {
+    $('#app').innerHTML = `<div class="auth" style="grid-template-columns:1fr"><section class="formside"><div class="acard c"><img class="logo" src="icon.svg" alt=""><h1>Buat username</h1><p class="sub">Username wajib diisi. Username dipakai untuk masuk dan tampil di daftar siswa.</p><div class="f"><input id="nu" type="text" autocomplete="username" placeholder="Username bebas, huruf apa saja" maxlength="60"></div><button class="btn block" id="nub" type="button">Simpan</button><button class="btn warn block instl" id="nuo" type="button">Keluar akun</button></div></section></div>`;
+    $('#nuo').onclick = ACT.logout;
+    $('#nub').onclick = async () => {
+      const raw = $('#nu').value.trim(), k = raw.toLowerCase();
+      if (!raw) return toast('Isi username');
+      const b = $('#nub'); b.disabled = true;
+      try {
+        const d = await fb.fs.collection('usernames').doc(unKey(k)).get();
+        if (d.exists) { b.disabled = false; return toast(errMsg({ code: 'undup' })); }
+        await fb.fs.collection('usernames').doc(unKey(k)).set({ email: s.email || '', uid: s.uid, name: raw });
+        try { await fb.auth.currentUser.updateProfile({ displayName: raw }); } catch (x) {}
+        prof.uname = raw; s.name = raw; cacheProf();
+        fb.fs.collection('users').doc(s.uid).update({ uname: raw }).catch(() => {});
+        ok();
+      } catch (e) { b.disabled = false; toast(errMsg(e)); }
+    };
+  });
+}
 async function gate(s) {
   user = s;
   let cp = null; try { cp = JSON.parse(localStorage.getItem('kk_prof_' + s.uid)); } catch (x) {}
@@ -1452,6 +1484,7 @@ async function gate(s) {
     }
     if (!prof) { toast('Gagal memuat akun, cek koneksi internet' + (e && e.code ? ' (' + e.code + ')' : '')); await fb.auth.signOut(); user = null; return showAuth(); }
   }
+  if (fb && !(prof.role !== 'owner' && !isOn(prof))) await ensureUname(s);
   if (s.displayName && prof.role !== 'owner' && prof.uname !== s.displayName) { prof.uname = s.displayName; cacheProf(); fb.fs.collection('users').doc(s.uid).update({ uname: s.displayName }).catch(() => {}); }
   if (unsubP) unsubP();
   unsubP = fb.fs.collection('users').doc(s.uid).onSnapshot(snap => {
@@ -1548,7 +1581,7 @@ let MEM = {}, MEMS = {};
 function watchMem(aid) { if (!fb || MEMS[aid]) return; MEMS[aid] = fb.fs.collection('members').doc(aid).collection('siswa').onSnapshot(q => { MEM[aid] = q.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, () => {}); }
 function unwatchMem(aid) { if (MEMS[aid]) { MEMS[aid](); delete MEMS[aid]; } delete MEM[aid]; }
 const memName = m => m.name || String(m.email || m.id).split('@')[0];
-function memHtml(aid) { const L = (MEM[aid] || []).slice().sort((a, b) => memName(a).localeCompare(memName(b))); return `<p class="cap" style="margin:0 0 6px"><b>Siswa tersambung kode (${L.length}):</b></p>${L.length ? `<div class="chips" style="margin-bottom:8px">${L.map(m => `<span class="chip">${esc(memName(m))}</span>`).join('')}</div>` : '<p class="cap" style="margin:0 0 8px">Belum ada siswa yang memasukkan kode ini.</p>'}`; }
+function memHtml(aid) { const L = (MEM[aid] || []).slice().sort((a, b) => memName(a).localeCompare(memName(b))); return `<p class="cap" style="margin:0 0 6px"><b>Siswa tersambung kode (${L.length}):</b></p>${L.length ? `<div class="chips" style="margin-bottom:8px">${L.map(m => `<span class="chip">${esc(memName(m))}${m.email ? ' · ' + esc(m.email) : ''}</span>`).join('')}</div>` : '<p class="cap" style="margin:0 0 8px">Belum ada siswa yang memasukkan kode ini.</p>'}`; }
 const ownTxt = (x, D) => [unOf(x.id), x.email, ...D.classes.map(c => c.name)].join(' ').toLowerCase();
 const ownHide = t => { const q = ((ui && ui.q) || '').trim().toLowerCase(); return q && !t.includes(q) ? ' style="display:none"' : ''; };
 document.addEventListener('input', e => { if (e.target && e.target.id === 'ownQ') { ui.q = e.target.value; const q = ui.q.trim().toLowerCase(); document.querySelectorAll('[data-s]').forEach(el => { el.style.display = q && !el.dataset.s.includes(q) ? 'none' : ''; }); } });
