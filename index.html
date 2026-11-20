@@ -832,7 +832,7 @@ const ACT = {
       reauth(pw).then(async () => { await savePin(n); toast('PIN berhasil diganti'); }).catch(e => toast(errMsg(e)));
     }, 'Ganti'),
   ownTog: async id => {
-    const x = OWN.find(u => u.id === id);
+    const x = [...OWN, ...SIS].find(u => u.id === id);
     try { await fb.fs.collection('users').doc(id).update({ active: !isOn(x), off: isOn(x) }); toast(isOn(x) ? 'Bendahara dinonaktifkan' : 'Bendahara diaktifkan'); } catch (e) { toast('Gagal, cek aturan Firestore'); }
   },
   ownPin: id => ask('PIN bendahara ini dihapus. Ia akan membuat PIN baru saat masuk berikutnya.', async () => {
@@ -841,7 +841,7 @@ const ACT = {
   ownView: id => { RO = id; data = OWND[id] ? OWND[id].d : normalize(null); ui = { classId: null, period: 'w', ref: today(), page: 'home' }; render(); window.scrollTo(0, 0); },
   ownBack: () => { RO = null; data = normalize(null); ui.page = 'admin'; render(); window.scrollTo(0, 0); },
   ownDel: id => {
-    const x = OWN.find(u => u.id === id); if (!x) return;
+    const x = [...OWN, ...SIS].find(u => u.id === id); if (!x) return;
     ask(`Akun ${esc(x.email || id)} beserta semua kelas, siswa, dan catatan kasnya akan dihapus.`, async () => {
       try {
         fotoDrop(id, ownD(id).expenses);
@@ -1394,7 +1394,7 @@ async function forgot() {
 }
 
 /* ---------- profil, PIN, peran (disimpan di database) ---------- */
-let prof = null, OWN = [], OWND = {}, RO = null, unsubU = null, unsubK = null, unsubP = null;
+let prof = null, OWN = [], SIS = [], OWND = {}, RO = null, unsubU = null, unsubK = null, unsubP = null;
 const OWNER_MAILS = ['huyrehan@gmail.com'];
 const pinH = p => hash(user.uid + ':kk:' + p);
 const hideSplash = () => { const sp = $('#splash'); if (sp) sp.remove(); };
@@ -1406,6 +1406,13 @@ async function savePin(p) {
 const cacheProf = () => { try { localStorage.setItem('kk_prof_' + user.uid, JSON.stringify(prof)); } catch (e) {} };
 const isOn = p => !!(p && (p.active || !p.off));
 const isSw = p => !!(p && String(p.role || '').toLowerCase() === 'siswa');
+function pickRole() {
+  hideSplash();
+  return new Promise(ok => {
+    $('#app').innerHTML = `<div class="auth" style="grid-template-columns:1fr"><section class="formside"><div class="acard c"><img class="logo" src="icon.svg" alt=""><h1>Kamu sebagai apa?</h1><p class="sub">Pilih peranmu di kas kelas. Pilihan ini tidak bisa diubah sendiri.</p><button class="btn block" data-role="admin" type="button">Bendahara / Sekretaris</button><p style="font-size:13px;color:var(--mut);margin:6px 0 16px">Bisa mencatat dan mengubah semua catatan kas.</p><button class="btn ghost block" data-role="siswa" type="button">Siswa</button><p style="font-size:13px;color:var(--mut);margin:6px 0 16px">Hanya bisa melihat semua aktivitas kas.</p><button class="btn warn block instl" data-act="logout" type="button">Keluar akun</button></div></section></div>`;
+    document.querySelectorAll('[data-role]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-role]').forEach(x => x.disabled = true); ok(b.dataset.role); });
+  });
+}
 async function gate(s) {
   user = s;
   let cp = null; try { cp = JSON.parse(localStorage.getItem('kk_prof_' + s.uid)); } catch (x) {}
@@ -1414,7 +1421,7 @@ async function gate(s) {
     const ref = fb.fs.collection('users').doc(s.uid), d = await ref.get();
     const om = OWNER_MAILS.includes((s.email || '').toLowerCase());
     if (d.exists) { prof = d.data(); if (om && prof.role !== 'owner') { prof.role = 'owner'; prof.active = true; await ref.update({ role: 'owner', active: true }); } }
-    else { prof = { email: s.email || '', role: om ? 'owner' : 'admin', active: om, pinHash: null, createdAt: Date.now() }; await ref.set(prof); }
+    else { prof = { email: s.email || '', role: om ? 'owner' : await pickRole(), active: om, pinHash: null, createdAt: Date.now() }; await ref.set(prof); }
     cacheProf();
   } catch (e) {
     try { prof = JSON.parse(localStorage.getItem('kk_prof_' + s.uid)); } catch (x) {}
@@ -1423,7 +1430,7 @@ async function gate(s) {
         await new Promise(r => setTimeout(r, 1200));
         const r2 = fb.fs.collection('users').doc(s.uid), d2 = await r2.get(), om2 = OWNER_MAILS.includes((s.email || '').toLowerCase());
         if (d2.exists) prof = d2.data();
-        else { prof = { email: s.email || '', role: om2 ? 'owner' : 'admin', active: om2, pinHash: null, createdAt: Date.now() }; await r2.set(prof); }
+        else { prof = { email: s.email || '', role: om2 ? 'owner' : await pickRole(), active: om2, pinHash: null, createdAt: Date.now() }; await r2.set(prof); }
         cacheProf();
       } catch (e2) { prof = null; e = e2; }
     }
@@ -1488,11 +1495,11 @@ function forgotPin() {
 }
 let UNM = {}, unsubN = null;
 const unOf = id => UNM[id] || ((OWN.find(o => o.id === id) || {}).uname || '');
-function ownStop() { if (unsubU) unsubU(); if (unsubK) unsubK(); if (unsubN) unsubN(); unsubU = unsubK = unsubN = null; RO = null; OWND = {}; UNM = {}; }
+function ownStop() { if (unsubU) unsubU(); if (unsubK) unsubK(); if (unsubN) unsubN(); unsubU = unsubK = unsubN = null; RO = null; OWND = {}; UNM = {}; SIS = []; }
 function showOwner() {
   hideSplash(); ownStop();
   ui = { classId: null, period: 'w', ref: today(), page: 'admin' }; data = normalize(null);
-  unsubU = (isSw(prof) ? fb.fs.collection('users').where('role', '==', 'admin') : fb.fs.collection('users')).onSnapshot(q => { OWN = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner' && !isSw(x)); if (!RO) render(); }, () => toast('Gagal memuat pengguna, cek aturan Firestore'));
+  unsubU = (isSw(prof) ? fb.fs.collection('users').where('role', '==', 'admin') : fb.fs.collection('users')).onSnapshot(q => { OWN = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner' && !isSw(x)); SIS = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => isSw(x)); if (!RO) render(); }, () => toast('Gagal memuat pengguna, cek aturan Firestore'));
   unsubN = fb.fs.collection('usernames').onSnapshot(q => { UNM = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.uid) UNM[v.uid] = v.name || d.id; }); render(); }, () => {});
   unsubK = fb.fs.collection('kaskelas').onSnapshot(q => {
     q.docs.forEach(d => { try { OWND[d.id] = { d: normalize(JSON.parse(d.data().json)), t: d.data().t }; } catch (e) {} });
@@ -1530,9 +1537,10 @@ function vAdmin() {
     <p class="cap" style="margin-bottom:6px">${D.classes.length} kelas, ${sw} siswa, ${D.payments.length + D.expenses.length} catatan. Aktivitas terakhir: ${o && o.t ? new Date(o.t).toLocaleString('id-ID') : 'belum ada'}</p>${cl ? `<div class="rows">${cl}</div>` : ''}
     <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button>${isSw(prof) ? '' : `<button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button>`}</div></div>`;
   }).join('');
+  const sis = isSw(prof) || !SIS.length ? '' : `<div class="hd" style="margin-top:24px"><div><h1 style="font-size:22px">Siswa</h1><p>${SIS.length} akun siswa, hanya bisa melihat</p></div></div><div class="ucards">${SIS.map((x, i) => `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(unOf(x.id) || x.email || '?'))}</span><div class="t"><b>${esc(unOf(x.id) || x.email || x.id)}</b><small>${unOf(x.id) ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div><div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button></div></div>`).join('')}</div>`;
   return `<div class="hd"><div><h1>Admin</h1><p>Pantau semua bendahara, langsung saat ada perubahan</p></div></div>
   <section class="own"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat"><span>Total masuk</span><b>${fmt(tin)}</b></div><div class="stat"><span>Total saldo</span><b>${fmt(tin - tout)}</b></div></section>
-  ${OWN.length ? `<div class="ucards">${cards}</div>` : '<div class="card empty"><p>Belum ada bendahara yang mendaftar.</p></div>'}`;
+  ${OWN.length ? `<div class="ucards">${cards}</div>` : '<div class="card empty"><p>Belum ada bendahara yang mendaftar.</p></div>'}${sis}`;
 }
 async function googleLogin() {
   if (!fb) return toast('Login Google belum aktif');
