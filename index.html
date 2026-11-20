@@ -226,7 +226,7 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 }
 .rdate{min-height:36px;padding:0 10px;border:0;border-radius:999px;background:var(--tealL);color:var(--tealD);font-weight:800;font-size:13px;max-width:150px}
 .ucards{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
-@media(max-width:600px){section.own{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){section.own,.ucards .own{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:600px){
   .own .stat b{font-size:15px;word-break:break-word}
   .row.s{flex-wrap:wrap}.row.s .t{flex:1 1 0;min-width:0}
@@ -1112,7 +1112,7 @@ function showAuth() {
   <section class="formside"><div class="acard"><img class="logo" src="icon.svg" alt="Logo Kas Kelas"><h1>${up ? 'Buat akun' : 'Selamat datang'}</h1><p class="sub">${up ? 'Daftar untuk mulai mencatat kas kelas.' : 'Masuk untuk membuka kas kelasmu.'}</p>
     <div class="tabs" role="tablist"><button class="${up ? '' : 'on'}" data-m="in" type="button">Masuk</button><button class="${up ? 'on' : ''}" data-m="up" type="button">Daftar</button></div>
     <form id="af" novalidate>
-      <div class="f"><label for="un">Username</label><input id="un" type="text" autocomplete="username" maxlength="20" placeholder="${up ? '3-20 huruf, angka, titik, garis bawah' : 'username kamu'}"${up ? ' required' : ''}></div>
+      <div class="f"><label for="un">Username</label><input id="un" type="text" autocomplete="username" placeholder="${up ? 'Username bebas, huruf apa saja' : 'username kamu'}"${up ? ' required' : ''}></div>
       <div class="f"><label for="em">Email</label><input id="em" type="email" autocomplete="email" inputmode="email" placeholder="nama@gmail.com"${up ? ' required' : ''}></div>
       ${up ? '' : '<p class="cap" style="margin:-6px 0 12px;font-size:13px">Isi salah satu: username atau email</p>'}
       <div class="f"><label for="pw">Password</label><div class="pw"><input id="pw" type="password" autocomplete="${up ? 'new-password' : 'current-password'}" minlength="6" placeholder="Minimal 6 karakter" required><button type="button" id="seepw">Lihat</button></div></div>
@@ -1131,9 +1131,10 @@ function showAuth() {
   $('#gbtn').onclick = googleLogin;
   const sp = $('#splash'); if (sp) sp.remove();
 }
+const unKey = u => 'u_' + encodeURIComponent(u);
 async function uname2em(u) {
   if (fb) {
-    let d = null; try { d = await fb.fs.collection('usernames').doc(u).get(); } catch (e) {}
+    let d = null; try { d = await fb.fs.collection('usernames').doc(unKey(u)).get(); } catch (e) {}
     if (d && d.exists && d.data().email) return d.data().email;
     throw { code: 'nouser' };
   }
@@ -1144,8 +1145,8 @@ async function uname2em(u) {
 async function submitAuth(e) {
   e.preventDefault();
   let em = $('#em').value.trim().toLowerCase(); const pw = $('#pw').value, btn = $('#abtn');
-  const unEl = $('#un'), un = unEl ? unEl.value.trim().toLowerCase() : '';
-  if (mode === 'up' && !/^[a-z0-9._]{3,20}$/.test(un)) return toast('Username 3-20 karakter: huruf, angka, titik, garis bawah');
+  const unEl = $('#un'), unRaw = unEl ? unEl.value.trim() : '', un = unRaw.toLowerCase();
+  if (mode === 'up' && !un) return toast('Isi username');
   if (pw.length < 6) return toast('Password minimal 6 karakter');
   btn.disabled = true; btn.textContent = 'Memproses...';
   try {
@@ -1154,17 +1155,17 @@ async function submitAuth(e) {
     if (fb) {
       if (mode === 'in') await fb.auth.signInWithEmailAndPassword(em, pw);
       else {
-        let tk = false; try { tk = (await fb.fs.collection('usernames').doc(un).get()).exists; } catch (x) {}
+        let tk = false; try { tk = (await fb.fs.collection('usernames').doc(unKey(un)).get()).exists; } catch (x) {}
         if (tk) throw { code: 'undup' };
         const cr = await fb.auth.createUserWithEmailAndPassword(em, pw);
-        try { await cr.user.updateProfile({ displayName: un }); if (user && user.uid === cr.user.uid) user.name = un; } catch (x) {}
-        try { await fb.fs.collection('usernames').doc(un).set({ email: em, uid: cr.user.uid }); } catch (x) {}
+        try { await cr.user.updateProfile({ displayName: unRaw }); if (user && user.uid === cr.user.uid) user.name = unRaw; } catch (x) {}
+        try { await fb.fs.collection('usernames').doc(unKey(un)).set({ email: em, uid: cr.user.uid, name: unRaw }); } catch (x) {}
       }
     } else {
       const U = JSON.parse(localStorage.getItem('kk_users') || '{}'), N = JSON.parse(localStorage.getItem('kk_unames') || '{}'), h = await hash(pw);
       if (mode === 'up') { if (U[em]) throw { code: 'dup' }; if (N[un]) throw { code: 'undup' }; U[em] = h; N[un] = em; localStorage.setItem('kk_users', JSON.stringify(U)); localStorage.setItem('kk_unames', JSON.stringify(N)); }
       else if (U[em] !== h) throw { code: 'bad' };
-      const s = { uid: 'l_' + (await hash(em)).slice(0, 16), email: em, name: mode === 'up' ? un : (Object.keys(N).find(k => N[k] === em) || em.split('@')[0]) };
+      const s = { uid: 'l_' + (await hash(em)).slice(0, 16), email: em, name: mode === 'up' ? unRaw : (Object.keys(N).find(k => N[k] === em) || em.split('@')[0]) };
       localStorage.setItem('kk_session' + KS, JSON.stringify(s));
       await enter(s);
     }
@@ -1203,7 +1204,16 @@ async function gate(s) {
     cacheProf();
   } catch (e) {
     try { prof = JSON.parse(localStorage.getItem('kk_prof_' + s.uid)); } catch (x) {}
-    if (!prof) { toast('Gagal memuat akun, cek koneksi internet'); await fb.auth.signOut(); user = null; return showAuth(); }
+    if (!prof) {
+      try {
+        await new Promise(r => setTimeout(r, 1200));
+        const r2 = fb.fs.collection('users').doc(s.uid), d2 = await r2.get(), om2 = OWNER_MAILS.includes((s.email || '').toLowerCase());
+        if (d2.exists) prof = d2.data();
+        else { prof = { email: s.email || '', role: om2 ? 'owner' : 'admin', active: om2, pinHash: null, createdAt: Date.now() }; await r2.set(prof); }
+        cacheProf();
+      } catch (e2) { prof = null; e = e2; }
+    }
+    if (!prof) { toast('Gagal memuat akun, cek koneksi internet' + (e && e.code ? ' (' + e.code + ')' : '')); await fb.auth.signOut(); user = null; return showAuth(); }
   }
   if (unsubP) unsubP();
   unsubP = fb.fs.collection('users').doc(s.uid).onSnapshot(snap => {
@@ -1266,7 +1276,7 @@ function showOwner() {
   hideSplash(); ownStop();
   ui = { classId: null, period: 'w', ref: today(), page: 'admin' }; data = normalize(null);
   unsubU = fb.fs.collection('users').onSnapshot(q => { OWN = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner'); if (!RO) render(); }, () => toast('Gagal memuat pengguna, cek aturan Firestore'));
-  unsubN = fb.fs.collection('usernames').onSnapshot(q => { UNM = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.uid) UNM[v.uid] = d.id; }); render(); }, () => {});
+  unsubN = fb.fs.collection('usernames').onSnapshot(q => { UNM = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.uid) UNM[v.uid] = v.name || d.id; }); render(); }, () => {});
   unsubK = fb.fs.collection('kaskelas').onSnapshot(q => {
     q.docs.forEach(d => { try { OWND[d.id] = { d: normalize(JSON.parse(d.data().json)), t: d.data().t }; } catch (e) {} });
     q.docChanges().forEach(c => { if (c.type === 'removed') delete OWND[c.doc.id]; });
