@@ -204,6 +204,8 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .acard.c{text-align:center}.acard.c .logo{display:block;margin:0 auto}
 .own{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
 .own .stat{padding:14px}.own .stat b{font-size:24px}
+.adm .stat{padding:20px}.adm .stat b{font-size:28px}.adm .stat small{max-width:75%;overflow-wrap:anywhere}
+@media(max-width:900px){.adm{grid-template-columns:minmax(0,1fr)}}
 .bnav.five button{font-size:10px}
 .ro [data-act=pay]:not(.pill),.ro [data-act=addClass],.ro [data-act=editClass],.ro [data-act=delClass],.ro [data-act=addStudents],.ro [data-act=editStudent],.ro [data-act=delStudent],.ro [data-act=delPay],.ro [data-act=addExp],.ro [data-act=delExp]{display:none!important}
 .ro .pill{pointer-events:none}
@@ -1252,7 +1254,7 @@ function vAdmin() {
     <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button><button class="btn sm ${x.active ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${x.active ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button></div></div>`;
   }).join('');
   return `<div class="hd"><div><h1>Admin</h1><p>Pantau semua bendahara, langsung saat ada perubahan</p></div></div>
-  <section class="own"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat"><span>Total masuk</span><b>${fmt(tin)}</b></div><div class="stat"><span>Total saldo</span><b>${fmt(tin - tout)}</b></div></section>
+  <section class="own adm"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat hero"><span>Total masuk</span><b>${fmt(tin)}</b><small>dari semua bendahara</small></div><div class="stat hero"><span>Total saldo</span><b>${fmt(tin - tout)}</b><small>masuk dikurangi keluar</small></div></section>
   ${OWN.length ? `<div class="ucards">${cards}</div>` : '<div class="card empty"><p>Belum ada bendahara yang mendaftar.</p></div>'}`;
 }
 async function googleLogin() {
