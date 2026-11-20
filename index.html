@@ -74,6 +74,34 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .gbtn:hover{border-color:var(--teal)}
 .gbtn svg{width:20px;height:20px}
 .note{font-size:13px;color:var(--mut);text-align:center;margin-top:14px}
+.art{background:linear-gradient(155deg,#16C0AE 0%,#0F9F90 58%,#0B7F75 100%)}
+.abrand{display:flex;align-items:center;gap:12px;position:relative;font:800 22px Fredoka,Nunito,sans-serif}
+.abrand img{width:44px;height:44px;border-radius:14px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.pv{position:relative;background:rgba(255,255,255,.97);color:var(--ink);border-radius:20px;padding:16px 18px;max-width:300px;box-shadow:0 18px 40px rgba(0,0,0,.2);transform:rotate(-2deg)}
+.pvh{display:flex;justify-content:space-between;align-items:baseline;color:var(--mut);font-weight:700;font-size:12px}
+.pv>b{display:block;font:800 26px Fredoka,Nunito,sans-serif;margin:2px 0 10px}
+.pvr{display:flex;gap:6px;margin-bottom:10px}
+.pvb{height:6px;border-radius:6px;background:var(--line);overflow:hidden}.pvb i{display:block;height:100%;width:72%;background:var(--teal);border-radius:6px}
+.perks div{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18)}
+.formside{background:var(--bg)}
+.acard{background:#fff;border:1px solid var(--line);border-radius:28px;padding:32px 28px;box-shadow:var(--sh)}
+.acard h1{font-size:28px}
+.acard .logo{width:56px;height:56px;border-radius:18px}
+.mhero{display:none}
+.f input:focus{box-shadow:0 0 0 4px rgba(19,181,165,.14)}
+.btn.block#abtn{min-height:48px;font-size:16px}
+@media(max-width:899px){
+.formside{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:0 16px 28px}
+.mhero{display:block;position:relative;overflow:hidden;align-self:stretch;margin:0 -16px;padding:calc(34px + env(safe-area-inset-top)) 24px 78px;text-align:center;color:#fff;background:linear-gradient(155deg,#16C0AE 0%,#0F9F90 58%,#0B7F75 100%);border-radius:0 0 36px 36px}
+.mhero::before{content:"";position:absolute;width:200px;height:200px;right:-70px;top:-70px;border-radius:50%;border:18px solid rgba(255,200,61,.35)}
+.mhero::after{content:"";position:absolute;width:130px;height:130px;left:-50px;bottom:-40px;border-radius:50%;border:14px solid rgba(255,255,255,.16)}
+.mhero img{position:relative;width:64px;height:64px;border-radius:20px;box-shadow:0 8px 22px rgba(0,0,0,.2)}
+.mhero h2{position:relative;font:800 26px Fredoka,Nunito,sans-serif;margin-top:10px}
+.mhero p{position:relative;opacity:.92;font-size:14px}
+.acard{margin-top:-48px;position:relative;padding:24px 20px}
+.acard.m .logo{display:none}
+.acard.m h1{margin-top:0}
+}
 .instl{margin-top:14px}
 
 /* kerangka */
@@ -179,8 +207,41 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .msg{color:var(--mut);margin-bottom:12px}
 #toast{position:fixed;left:50%;top:auto;right:auto;margin:0;border:0;overflow:visible;width:max-content;height:auto;bottom:90px;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:calc(100vw - 32px);text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
-#splash{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:100}
-#splash img{width:84px;height:84px;border-radius:26px;animation:bob 1s ease-in-out infinite alternate}
+#splash{position:fixed;inset:0;background:radial-gradient(circle at 50% 42%,#12B3A3 0,#0A7068 46%,#052F2C 100%);display:grid;place-items:center;z-index:100;overflow:hidden;clip-path:circle(150% at 50% 42%);transition:clip-path .75s cubic-bezier(.7,0,.25,1)}
+#splash.out{clip-path:circle(0% at 50% 42%)}
+.sp-bg{position:absolute;inset:0;pointer-events:none}
+.sp-bg i{position:absolute;border-radius:50%;filter:blur(46px);opacity:.55}
+.sp-bg i:nth-child(1){width:300px;height:300px;left:-90px;top:-70px;background:#FFC83D;animation:spDrift 6s ease-in-out infinite alternate}
+.sp-bg i:nth-child(2){width:320px;height:320px;right:-110px;bottom:-90px;background:#5AA9FF;opacity:.4;animation:spDrift 7s ease-in-out infinite alternate-reverse}
+.sp-bg i:nth-child(3){width:220px;height:220px;right:-40px;top:8%;background:#13B5A5;animation:spDrift 5s ease-in-out infinite alternate}
+.sp-c{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;perspective:700px}
+.sp-halo{position:absolute;top:48px;left:50%;width:280px;height:280px;margin:-140px 0 0 -140px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.45),rgba(255,200,61,.18) 40%,transparent 68%);animation:spHalo 2.2s ease-in-out infinite alternate}
+.sp-ring{position:absolute;top:48px;left:50%;width:96px;height:96px;margin:-48px 0 0 -48px;border-radius:50%;border:2.5px solid rgba(255,255,255,.7);opacity:0;animation:spRing 2s ease-out .55s infinite}
+.sp-ring.r2{border-color:#FFC83D;animation-delay:1.3s}
+.sp-orb{position:absolute;top:48px;left:50%;width:150px;height:150px;margin:-75px 0 0 -75px;animation:spSpin 1.7s linear infinite,spFade .5s ease 1.1s both}
+.sp-orb i{position:absolute;left:50%;top:-4px;width:9px;height:9px;margin-left:-4.5px;border-radius:50%;background:#FFC83D;box-shadow:0 0 14px 4px rgba(255,200,61,.8)}
+.sp-orb i+i{top:auto;bottom:-3px;width:6px;height:6px;margin-left:-3px;background:#fff;box-shadow:0 0 10px 3px rgba(255,255,255,.7)}
+.sp-pt{position:absolute;top:48px;left:50%;width:0;height:0}
+.sp-pt i{position:absolute;left:-4px;top:-4px;width:var(--s);height:var(--s);border-radius:50%;background:var(--c);opacity:0;animation:spBurst 1.1s cubic-bezier(.15,.8,.3,1) calc(.75s + var(--dl)) both}
+.sp-logo{position:relative;width:96px;height:96px;border-radius:30px;box-shadow:0 22px 50px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.25);animation:spFlip 1.1s cubic-bezier(.2,1.3,.35,1) both,spFloat 2.4s ease-in-out 1.1s infinite alternate}
+#splash img{display:block;width:96px;height:96px;border-radius:30px}
+.sp-gl{position:absolute;inset:0;border-radius:30px;overflow:hidden}
+.sp-gl::before{content:"";position:absolute;top:-20%;bottom:-20%;left:-60%;width:40%;background:linear-gradient(100deg,transparent,rgba(255,255,255,.75),transparent);transform:skewX(-20deg);animation:spGloss 1.1s ease-in-out 1.05s 1 both,spGloss 1.1s ease-in-out 3s infinite}
+.sp-t{margin-top:26px;font:800 30px Fredoka,Nunito,sans-serif;color:#fff;letter-spacing:.02em;text-shadow:0 4px 18px rgba(0,0,0,.25)}
+.sp-t span{display:inline-block;opacity:0;animation:spLet .65s cubic-bezier(.2,.9,.3,1.25) calc(.85s + var(--i) * .05s) both}
+.sp-s{margin-top:4px;color:rgba(255,255,255,.78);font-size:11px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;opacity:0;animation:spUp .7s ease 1.45s both}
+@keyframes spFlip{0%{opacity:0;transform:rotateY(-100deg) scale(.4)}55%{opacity:1;transform:rotateY(14deg) scale(1.12)}100%{opacity:1;transform:rotateY(0) scale(1)}}
+@keyframes spFloat{to{transform:translateY(-7px)}}
+@keyframes spHalo{from{transform:scale(.85);opacity:.7}to{transform:scale(1.15);opacity:1}}
+@keyframes spRing{0%{transform:scale(.85);opacity:.7}100%{transform:scale(2.9);opacity:0}}
+@keyframes spSpin{to{transform:rotate(360deg)}}
+@keyframes spFade{from{opacity:0}to{opacity:1}}
+@keyframes spBurst{0%{opacity:1;transform:rotate(var(--a)) translateX(30px) scale(.3)}100%{opacity:0;transform:rotate(var(--a)) translateX(var(--d)) scale(1)}}
+@keyframes spGloss{0%{left:-60%}100%{left:130%}}
+@keyframes spLet{0%{opacity:0;transform:translateY(26px) rotateX(-70deg)}100%{opacity:1;transform:none}}
+@keyframes spUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes spDrift{to{transform:translate(26px,20px) scale(1.12)}}
+@media(prefers-reduced-motion:reduce){#splash *{animation:none!important;opacity:1!important}}
 @keyframes bob{to{transform:translateY(-8px)}}
 
 @media(max-width:1100px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat.hero,.stats>.stat:last-child{grid-column:1/-1}.grid2{grid-template-columns:minmax(0,1fr)}}
@@ -350,7 +411,7 @@ table.kt td:first-child,table.kt th:first-child{min-width:220px}
 </style>
 </head>
 <body>
-<div id="splash"><img src="icon.svg" alt="Kas Kelas"></div>
+<div id="splash"><div class="sp-bg"><i></i><i></i><i></i></div><div class="sp-c"><div class="sp-halo"></div><div class="sp-ring"></div><div class="sp-ring r2"></div><div class="sp-orb"><i></i><i></i></div><div class="sp-pt"><i style="--a:0deg;--d:150px;--s:8px;--c:#FFC83D;--dl:0s"></i><i style="--a:30deg;--d:120px;--s:6px;--c:#fff;--dl:0.04s"></i><i style="--a:60deg;--d:160px;--s:9px;--c:#FFC83D;--dl:0.02s"></i><i style="--a:90deg;--d:130px;--s:6px;--c:#fff;--dl:0.06s"></i><i style="--a:120deg;--d:150px;--s:8px;--c:#FFC83D;--dl:0.03s"></i><i style="--a:150deg;--d:120px;--s:6px;--c:#fff;--dl:0.05s"></i><i style="--a:180deg;--d:160px;--s:9px;--c:#FFC83D;--dl:0.01s"></i><i style="--a:210deg;--d:130px;--s:6px;--c:#fff;--dl:0.07s"></i><i style="--a:240deg;--d:150px;--s:8px;--c:#FFC83D;--dl:0.04s"></i><i style="--a:270deg;--d:120px;--s:6px;--c:#fff;--dl:0.02s"></i><i style="--a:300deg;--d:160px;--s:9px;--c:#FFC83D;--dl:0.05s"></i><i style="--a:330deg;--d:130px;--s:6px;--c:#fff;--dl:0.03s"></i></div><div class="sp-logo"><img src="icon.svg" alt="Kas Kelas"><div class="sp-gl"></div></div><div class="sp-t" aria-label="Kas Kelas"><span style="--i:0">K</span><span style="--i:1">a</span><span style="--i:2">s</span><span style="--i:3">&nbsp;</span><span style="--i:4">K</span><span style="--i:5">e</span><span style="--i:6">l</span><span style="--i:7">a</span><span style="--i:8">s</span></div><div class="sp-s">Rapi · Transparan</div></div></div>
 <div id="app"></div>
 <dialog id="dlg"></dialog>
 <div id="toast" popover="manual" role="status" aria-live="polite"></div>
@@ -965,30 +1026,48 @@ const ACT = {
     save(); render(); toast('Catatan tersimpan');
   }); },
   pay: (sid, _t, dt0) => {
-    const c = C(), dt = dt0 || defDate();
+    const c = C(), pt = c.tipe || ui.period, dt = dt0 || defDate();
     if (!c.students.length) { toast('Tambah siswa dulu di menu Siswa'); return; }
-    if (sid && lunasOn(sid, dt)) {
-      const pt = c.tipe || ui.period, nx = addDays(range(pt, dt)[1], 1);
-      ask('<b>' + esc(sname(c, sid)) + '</b> sudah lunas untuk ' + plabel(pt, dt) + '. Mau bayar untuk periode selanjutnya (' + plabel(pt, nx) + ')?', () => setTimeout(() => ACT.pay(sid, null, nx), 0), 'Ya, bayar');
-      return;
-    }
-    const opts = c.students.map(s => `<option value="${s.id}" ${s.id === sid ? 'selected' : ''}>${s.no}. ${esc(s.name)}</option>`).join('');
+    const s1 = sid || c.students[0].id;
+    let d0 = dt;
+    if (sid && !dt0) for (let i = 0; i < 3 && lunasOn(sid, d0); i++) d0 = shift(pt, range(pt, d0)[0], 1);
+    const perHtml = (s0, dsel) => {
+      const t = today(), need = c.iuran[pt], sa = range(pt, dsel)[0], refs = [];
+      for (let n = -11; n <= 2; n++) refs.push(shift(pt, t, n));
+      if (!refs.some(r => range(pt, r)[0] === sa)) refs.push(sa);
+      return refs.map(r => {
+        const [a, b] = range(pt, r), v = t >= a && t <= b ? t : b < t ? b : a;
+        const p = sumA(inR(data.payments.filter(x => x.classId === c.id && x.studentId === s0), a, b));
+        const tg = p <= 0 ? 'belum' : (need > 0 && p < need) ? 'sebagian' : 'lunas';
+        return `<option value="${v}" ${a === sa ? 'selected' : ''}>${esc(plabel(pt, a))} · ${tg}</option>`;
+      }).join('');
+    };
+    const room0 = payRoom(s1, d0), amt0 = room0 > 0 && room0 !== Infinity ? room0 : c.iuran[pt];
+    const opts = c.students.map(s => `<option value="${s.id}" ${s.id === s1 ? 'selected' : ''}>${s.no}. ${esc(s.name)}</option>`).join('');
     modal('Catat kas masuk',
       fld('Nama siswa', `<select name="sid">${opts}</select>`) +
-      fld('Nominal (Rp)', `<input name="amt" type="text" inputmode="numeric" class="rp" required value="${fmtN(c.iuran[c.tipe || ui.period])}">`) +
-      fld('Tanggal', `<input name="date" type="date" required value="${dt}">`) +
+      fld('Bayar untuk periode (bebas pilih, termasuk yang lalu)', `<select name="per">${perHtml(s1, d0)}</select>`) +
+      fld('Nominal (Rp)', `<input name="amt" type="text" inputmode="numeric" class="rp" required value="${fmtN(amt0)}">`) +
+      fld('Tanggal', `<input name="date" type="date" required value="${d0}">`) +
       fld('Catatan (opsional)', '<input name="note" maxlength="60" placeholder="Contoh: bayar 2 minggu">') + '<button type="button" class="btn ghost block" id="qrisBtn">Bayar pakai QRIS</button>',
       f => {
         const amt = parseRp(f.get('amt'));
         if (!(amt > 0)) { toast('Nominal harus lebih dari 0'); return false; }
         if (!okDate(f.get('date'))) { toast('Tanggal tidak valid'); return false; }
-        if (lunasOn(f.get('sid'), f.get('date'))) { const s0 = f.get('sid'), d0 = f.get('date'); setTimeout(() => ACT.pay(s0, null, d0), 0); return; }
+        if (lunasOn(f.get('sid'), f.get('date'))) { toast('Periode ini sudah lunas, pilih periode lain'); return false; }
         const rm = payRoom(f.get('sid'), f.get('date'));
         if (amt > rm) { toast('Nominal melebihi iuran, maksimal ' + fmt(rm) + ' untuk periode ini'); return false; }
         data.payments.push({ id: uid(), classId: c.id, studentId: f.get('sid'), amount: amt, date: f.get('date'), note: f.get('note').trim() });
         save(); render(); toast('Catatan tersimpan');
       });
-    const qb = $('#qrisBtn'); if (qb) qb.onclick = () => ACT.qrisPay(qb.form);
+    const qb = $('#qrisBtn');
+    if (qb) {
+      const fm = qb.form, sync = () => { const r = payRoom(fm.sid.value, fm.date.value); fm.amt.value = fmtN(r > 0 && r !== Infinity ? r : c.iuran[pt]); };
+      fm.sid.onchange = () => { fm.per.innerHTML = perHtml(fm.sid.value, fm.date.value); sync(); };
+      fm.per.onchange = () => { fm.date.value = fm.per.value; sync(); };
+      fm.date.onchange = () => { if (okDate(fm.date.value)) { fm.per.innerHTML = perHtml(fm.sid.value, fm.date.value); sync(); } };
+      qb.onclick = () => ACT.qrisPay(fm);
+    }
   },
   qrisPay: form => {
     const c = C(), f = new FormData(form), amt = parseRp(f.get('amt')), sid = f.get('sid'), date = f.get('date'), note = (f.get('note') || '').trim();
@@ -1378,9 +1457,10 @@ function errMsg(e) {
 }
 function showAuth() {
   const up = mode === 'up';
-  $('#app').innerHTML = `<div class="auth"><section class="art"><h2>Kas kelas jadi rapi dan transparan</h2><p>Catat iuran, pantau saldo, dan lihat ke mana uang kelas dipakai.</p>
+  $('#app').innerHTML = `<div class="auth"><section class="art"><div class="abrand"><img src="icon.svg" alt="">Kas Kelas</div><h2>Kas kelas jadi rapi dan transparan</h2><p>Catat iuran, pantau saldo, dan lihat ke mana uang kelas dipakai.</p>
+    <div class="pv"><div class="pvh"><span>Saldo kas</span><span>Minggu ini</span></div><b>Rp 1.250.000</b><div class="pvr"><i class="kc ok"></i><i class="kc ok"></i><i class="kc mid"></i><i class="kc ok"></i><i class="kc no"></i></div><div class="pvb"><i></i></div></div>
     <div class="perks"><div>${ic('users')}Daftar siswa tiap kelas</div><div>${ic('chart')}Grafik harian, mingguan, bulanan</div><div>${ic('dl')}Bisa dipasang seperti aplikasi</div></div></section>
-  <section class="formside"><div class="acard"><img class="logo" src="icon.svg" alt="Logo Kas Kelas"><h1>${up ? 'Buat akun' : 'Selamat datang'}</h1><p class="sub">${up ? 'Daftar untuk mulai mencatat kas kelas.' : 'Masuk untuk membuka kas kelasmu.'}</p>
+  <section class="formside"><div class="mhero"><img src="icon.svg" alt="Logo Kas Kelas"><h2>Kas Kelas</h2><p>Catat iuran, pantau saldo, tanpa ribet.</p></div><div class="acard m"><img class="logo" src="icon.svg" alt="Logo Kas Kelas"><h1>${up ? 'Buat akun' : 'Selamat datang'}</h1><p class="sub">${up ? 'Daftar untuk mulai mencatat kas kelas.' : 'Masuk untuk membuka kas kelasmu.'}</p>
     <div class="tabs" role="tablist"><button class="${up ? '' : 'on'}" data-m="in" type="button">Masuk</button><button class="${up ? 'on' : ''}" data-m="up" type="button">Daftar</button></div>
     <form id="af" novalidate>
       <div class="f"><label for="un">Username</label><input id="un" type="text" autocomplete="username" placeholder="${up ? 'Username bebas, huruf apa saja' : 'username kamu'}"${up ? ' required' : ''}></div>
@@ -1400,7 +1480,7 @@ function showAuth() {
   $('#af').onsubmit = submitAuth;
   const fw = $('#fpw'); if (fw) fw.onclick = forgot;
   $('#gbtn').onclick = googleLogin;
-  const sp = $('#splash'); if (sp) sp.remove();
+  endSplash();
 }
 const unKey = u => 'u_' + encodeURIComponent(u);
 async function uname2em(u) {
@@ -1455,7 +1535,9 @@ async function forgot() {
 let prof = null, OWN = [], SIS = [], OWND = {}, RO = null, unsubU = null, unsubK = null, unsubP = null;
 const OWNER_MAILS = ['huyrehan@gmail.com'];
 const pinH = p => hash(user.uid + ':kk:' + p);
-const hideSplash = () => { const sp = $('#splash'); if (sp) sp.remove(); };
+var SP0 = performance.now();
+function endSplash() { const sp = $('#splash'); if (!sp || sp.dataset.e) return; sp.dataset.e = 1; setTimeout(() => { sp.classList.add('out'); setTimeout(() => sp.remove(), 450); }, Math.max(0, 2200 - (performance.now() - SP0))); }
+const hideSplash = () => endSplash();
 async function savePin(p) {
   const h = await pinH(p);
   prof.pinHash = h; cacheProf();
@@ -1725,7 +1807,7 @@ async function enter(s) {
   await loadData(); render();
   if (localStorage.getItem('kk_dirty_' + user.uid)) sync();
   listen();
-  const sp = $('#splash'); if (sp) sp.remove();
+  endSplash();
 }
 /* ---------- AI analisis (Gemini lewat worker yang sama dengan Arus Keuangan) ---------- */
 const AI_WORKER_URL = 'https://floral-night-ca1f.huyrehan.workers.dev';
