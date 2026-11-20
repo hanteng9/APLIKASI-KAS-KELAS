@@ -456,11 +456,11 @@ function shell(view) {
   return `<div class="shell">
   <aside class="side"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>${nav('s')}<div class="sp"></div>
     <button class="nav install" data-act="install" hidden>${ic('dl')}Download aplikasi</button>
-    <button class="nav install" data-act="apk" hidden>${ic('dl')}Download APK</button>
+    <button class="nav install" data-act="apk" hidden>${ic('dl')}Pasang Aplikasi</button>
     <div class="me">${esc(user.email || user.name || '')}</div>
     ${fb ? `<button class="nav" data-act="chpin">${ic('key')}Ganti PIN</button>` : ''}<button class="nav" data-act="logout">${ic('out')}Keluar akun</button></aside>
   <div><header class="mtop"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>
-    <div><button class="btn sm ghost install" data-act="apk" hidden>Unduh APK</button>${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
+    <div><button class="btn sm ghost install" data-act="apk" hidden>Pasang Aplikasi</button>${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
   <main class="main">${view}</main></div></div>
   <nav class="bnav ${N.length > 4 ? 'five' : ''}" style="grid-template-columns:repeat(${N.length},1fr)" aria-label="Menu">${nav('b')}</nav>`;
 }
@@ -561,16 +561,7 @@ const ACT = {
     if (dip) { dip.prompt(); await dip.userChoice; dip = null; setInstallVisible(); }
     else toast('Buka menu browser lalu pilih "Pasang aplikasi" atau "Tambahkan ke layar utama"');
   },
-  apk: async () => {
-    const repo = (window.KAS_CONFIG || {}).githubRepo || location.hostname.split('.')[0] + '/' + location.pathname.split('/')[1];
-    toast('Mencari APK terbaru...');
-    try {
-      const r = await fetch('https://api.github.com/repos/' + repo + '/releases/latest');
-      const a = ((await r.json()).assets || []).find(x => /\.apk$/i.test(x.name));
-      if (!a) throw 0;
-      location.href = a.browser_download_url; toast('Mengunduh ' + a.name);
-    } catch (e) { toast('APK belum ada di GitHub Release'); window.open('https://github.com/' + repo + '/releases', '_blank'); }
-  },
+  apk: () => ACT.install(),
   chpin: () => modal('Ganti PIN',
     fld('PIN lama', '<input name="o" type="password" inputmode="numeric" maxlength="6" autocomplete="off" required>') +
     fld('PIN baru (6 angka)', '<input name="n" type="password" inputmode="numeric" maxlength="6" autocomplete="off" required>') +
@@ -663,7 +654,7 @@ document.addEventListener('change', e => { if (e.target.id === 'selClass') { ui.
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { const m = innerWidth < 640; if (m !== lastMobile && data) { lastMobile = m; render(); } }, 150); });
 
 /* ---------- pasang aplikasi ---------- */
-const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const standalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
 function setInstallVisible() {
   document.querySelectorAll('.install').forEach(b => { b.hidden = standalone(); });
 }
@@ -715,7 +706,7 @@ function showAuth() {
     <div class="or">atau</div>
     <button class="gbtn" id="gbtn" type="button">${GOOGLE}Masuk dengan Google</button>
     <button class="btn ghost block instl install" data-act="install" type="button" hidden>${ic('dl')}Download aplikasi</button>
-    <button class="btn ghost block instl install" data-act="apk" type="button" hidden>${ic('dl')}Download APK</button>
+    <button class="btn ghost block instl install" data-act="apk" type="button" hidden>${ic('dl')}Pasang Aplikasi</button>
     </div></section></div>`;
   setInstallVisible();
   document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; showAuth(); });
