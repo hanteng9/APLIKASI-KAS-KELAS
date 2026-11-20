@@ -170,7 +170,7 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .mact{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
 .g3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .msg{color:var(--mut);margin-bottom:12px}
-#toast{position:fixed;left:50%;bottom:90px;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:calc(100vw - 32px);text-align:center}
+#toast{position:fixed;left:50%;top:auto;right:auto;margin:0;border:0;overflow:visible;width:max-content;height:auto;bottom:90px;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:calc(100vw - 32px);text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 #splash{position:fixed;inset:0;background:var(--bg);display:grid;place-items:center;z-index:100}
 #splash img{width:84px;height:84px;border-radius:26px;animation:bob 1s ease-in-out infinite alternate}
@@ -321,7 +321,7 @@ table.kt tfoot td:first-child{background:var(--bg)}
 <div id="splash"><img src="icon.svg" alt="Kas Kelas"></div>
 <div id="app"></div>
 <dialog id="dlg"></dialog>
-<div id="toast" role="status" aria-live="polite"></div>
+<div id="toast" popover="manual" role="status" aria-live="polite"></div>
 <script src="config.js"></script>
 <script>
 "use strict";
@@ -606,7 +606,8 @@ const sname = (c, id) => { const s = c.students.find(x => x.id === id); return s
 let tt;
 function toast(m) {
   const t = $('#toast'); t.textContent = m; t.classList.add('show');
-  clearTimeout(tt); tt = setTimeout(() => t.classList.remove('show'), 3200);
+  try { if (t.matches(':popover-open')) t.hidePopover(); t.showPopover(); } catch (e) {}
+  clearTimeout(tt); tt = setTimeout(() => { t.classList.remove('show'); setTimeout(() => { if (!t.classList.contains('show')) try { t.hidePopover(); } catch (e) {} }, 300); }, 3200);
 }
 function modal(title, html, onOk, okText = 'Simpan') {
   const d = $('#dlg');
