@@ -284,20 +284,38 @@ function normalize(d) {
   };
 }
 function save() {
-  try { localStorage.setItem('kk_data_' + user.uid, JSON.stringify(data)); } catch (e) { toast('Penyimpanan perangkat penuh'); }
-  if (fb) fb.fs.collection('kaskelas').doc(user.uid).set({ json: JSON.stringify(data), t: Date.now() }).catch(() => toast('Gagal sinkron ke cloud'));
+  try { localStorage.setItem('kk_data_' + user.uid, JSON.stringify(data)); localStorage.setItem('kk_dirty_' + user.uid, '1'); } catch (e) { toast('Penyimpanan perangkat penuh'); }
+  sync();
+}
+let syncing = false, again = false;
+async function sync() {
+  if (!fb || !user || !navigator.onLine) return;
+  if (syncing) { again = true; return; }
+  syncing = true;
+  const u = user.uid;
+  try {
+    do {
+      again = false;
+      const json = localStorage.getItem('kk_data_' + u);
+      if (!json) break;
+      await fb.fs.collection('kaskelas').doc(u).set({ json, t: Date.now() });
+      if (!again) localStorage.removeItem('kk_dirty_' + u);
+    } while (again);
+  } catch (e) {}
+  syncing = false;
 }
 async function loadData() {
   let d = null;
   try { d = JSON.parse(localStorage.getItem('kk_data_' + user.uid)); } catch (e) {}
-  if (fb) {
+  if (fb && navigator.onLine && !localStorage.getItem('kk_dirty_' + user.uid)) {
     try {
-      const doc = await fb.fs.collection('kaskelas').doc(user.uid).get();
-      if (doc.exists) d = JSON.parse(doc.data().json);
-    } catch (e) { toast('Data cloud belum bisa dimuat, memakai data perangkat'); }
+      const doc = await Promise.race([fb.fs.collection('kaskelas').doc(user.uid).get(), new Promise((_, no) => setTimeout(no, 4000))]);
+      if (doc.exists) { d = JSON.parse(doc.data().json); try { localStorage.setItem('kk_data_' + user.uid, JSON.stringify(d)); } catch (e) {} }
+    } catch (e) {}
   }
   data = normalize(d);
 }
+addEventListener('online', () => { if (user && localStorage.getItem('kk_dirty_' + user.uid)) sync(); });
 const C = () => {
   let c = data.classes.find(x => x.id === ui.classId);
   if (!c && data.classes.length) { c = data.classes[0]; ui.classId = c.id; }
@@ -492,6 +510,7 @@ const ACT = {
   now: () => { ui.ref = today(); render(); },
   logout: async () => {
     if (fb) await fb.auth.signOut(); else localStorage.removeItem('kk_session');
+    localStorage.removeItem('kk_fbsess');
     user = null; data = null; mode = 'in'; showAuth();
   },
   install: async () => {
@@ -501,20 +520,20 @@ const ACT = {
   addClass: () => modal('Kelas baru', classForm(), f => {
     const v = readClass(f); if (!v) return false;
     const c = { id: uid(), name: v.name, iuran: v.iuran, students: [] };
-    data.classes.push(c); ui.classId = c.id; save(); render(); toast('Kelas dibuat');
+    data.classes.push(c); ui.classId = c.id; save(); render(); toast('Catatan tersimpan');
   }),
-  editClass: () => { const c = C(); modal('Ubah kelas', classForm(c), f => { const v = readClass(f); if (!v) return false; c.name = v.name; c.iuran = v.iuran; save(); render(); toast('Kelas disimpan'); }); },
+  editClass: () => { const c = C(); modal('Ubah kelas', classForm(c), f => { const v = readClass(f); if (!v) return false; c.name = v.name; c.iuran = v.iuran; save(); render(); toast('Catatan tersimpan'); }); },
   delClass: () => { const c = C(); ask(`Kelas ${esc(c.name)} beserta semua siswa dan catatan kasnya akan dihapus.`, () => {
     data.classes = data.classes.filter(x => x.id !== c.id);
     data.payments = data.payments.filter(x => x.classId !== c.id);
     data.expenses = data.expenses.filter(x => x.classId !== c.id);
-    ui.classId = null; save(); render(); toast('Kelas dihapus');
+    ui.classId = null; save(); render(); toast('Catatan tersimpan');
   }); },
   addStudents: () => modal('Tambah siswa', fld('Nama siswa (satu nama per baris)', '<textarea name="names" required placeholder="Aisyah&#10;Budi&#10;Citra"></textarea>'), f => {
     const c = C(), names = f.get('names').split('\n').map(s => s.trim().slice(0, 40)).filter(Boolean);
     if (!names.length) { toast('Isi minimal satu nama'); return false; }
     names.forEach(n => c.students.push({ id: uid(), name: n }));
-    save(); render(); toast(names.length + ' siswa ditambahkan');
+    save(); render(); toast('Catatan tersimpan');
   }),
   editStudent: id => { const c = C(), s = c.students.find(x => x.id === id); modal('Ubah nama', fld('Nama siswa', `<input name="name" maxlength="40" required value="${esc(s.name)}">`), f => {
     const n = f.get('name').trim(); if (!n) { toast('Nama wajib diisi'); return false; }
@@ -523,7 +542,7 @@ const ACT = {
   delStudent: id => { const c = C(), s = c.students.find(x => x.id === id); ask(`Hapus ${esc(s.name)}? Catatan bayarnya ikut terhapus.`, () => {
     c.students = c.students.filter(x => x.id !== id);
     data.payments = data.payments.filter(x => x.studentId !== id);
-    save(); render(); toast('Siswa dihapus');
+    save(); render(); toast('Catatan tersimpan');
   }); },
   pay: sid => {
     const c = C();
@@ -539,10 +558,10 @@ const ACT = {
         if (!(amt > 0)) { toast('Nominal harus lebih dari 0'); return false; }
         if (!okDate(f.get('date'))) { toast('Tanggal tidak valid'); return false; }
         data.payments.push({ id: uid(), classId: c.id, studentId: f.get('sid'), amount: amt, date: f.get('date'), note: f.get('note').trim() });
-        save(); render(); toast('Kas masuk dicatat');
+        save(); render(); toast('Catatan tersimpan');
       });
   },
-  delPay: id => ask('Hapus catatan kas masuk ini?', () => { data.payments = data.payments.filter(x => x.id !== id); save(); render(); toast('Catatan dihapus'); }),
+  delPay: id => ask('Hapus catatan kas masuk ini?', () => { data.payments = data.payments.filter(x => x.id !== id); save(); render(); toast('Catatan tersimpan'); }),
   addExp: () => {
     const c = C();
     modal('Catat pengeluaran',
@@ -556,10 +575,10 @@ const ACT = {
         if (!(amt > 0)) { toast('Nominal harus lebih dari 0'); return false; }
         if (!okDate(f.get('date'))) { toast('Tanggal tidak valid'); return false; }
         data.expenses.push({ id: uid(), classId: c.id, amount: amt, date: f.get('date'), desc, cat: f.get('cat') });
-        save(); render(); toast('Pengeluaran dicatat');
+        save(); render(); toast('Catatan tersimpan');
       });
   },
-  delExp: id => ask('Hapus catatan pengeluaran ini?', () => { data.expenses = data.expenses.filter(x => x.id !== id); save(); render(); toast('Catatan dihapus'); })
+  delExp: id => ask('Hapus catatan pengeluaran ini?', () => { data.expenses = data.expenses.filter(x => x.id !== id); save(); render(); toast('Catatan tersimpan'); })
 };
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act]');
@@ -587,8 +606,7 @@ async function hash(p) {
 }
 const loadScript = src => new Promise((ok, no) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = no; document.head.appendChild(s); });
 async function initFb() {
-  let c = (window.KAS_CONFIG || {}).firebase;
-  if (!c || !c.apiKey) { try { c = JSON.parse(localStorage.getItem('kk_fbcfg')); } catch (e) { c = null; } }
+  const c = (window.KAS_CONFIG || {}).firebase;
   if (!c || !c.apiKey || !c.projectId) return false;
   try {
     const v = '10.12.2', b = `https://www.gstatic.com/firebasejs/${v}/firebase-`;
@@ -621,14 +639,12 @@ function showAuth() {
     <div class="or">atau</div>
     <button class="gbtn" id="gbtn" type="button">${GOOGLE}Masuk dengan Google</button>
     <button class="btn ghost block instl install" data-act="install" type="button" hidden>${ic('dl')}Pasang aplikasi</button>
-    <p class="note">${fb ? 'Data tersinkron ke akunmu.' : 'Mode lokal: data tersimpan di perangkat ini.'}</p>
-    <button class="btn ghost sm block" id="fbbtn" type="button">${fb ? 'Ubah Firebase' : 'Hubungkan Firebase'}</button></div></section></div>`;
+    </div></section></div>`;
   setInstallVisible();
   document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; showAuth(); });
   $('#seepw').onclick = () => { const p = $('#pw'); p.type = p.type === 'password' ? 'text' : 'password'; $('#seepw').textContent = p.type === 'password' ? 'Lihat' : 'Sembunyi'; };
   $('#af').onsubmit = submitAuth;
   $('#gbtn').onclick = googleLogin;
-  $('#fbbtn').onclick = fbSetup;
   const sp = $('#splash'); if (sp) sp.remove();
 }
 async function submitAuth(e) {
@@ -652,39 +668,31 @@ async function submitAuth(e) {
   } catch (err) { toast(errMsg(err)); }
   const b2 = $('#abtn'); if (b2) b2.disabled = false;
 }
-function fbSetup() {
-  modal('Hubungkan Firebase',
-    '<p class="msg">Tempel firebaseConfig dari Firebase Console (Project settings, Your apps, Web).</p>' +
-    fld('firebaseConfig', '<textarea name="cfg" placeholder="const firebaseConfig = {&#10;  apiKey: &quot;...&quot;,&#10;  authDomain: &quot;...&quot;,&#10;  projectId: &quot;...&quot;,&#10;  appId: &quot;...&quot;&#10;};"></textarea>'),
-    f => {
-      const txt = f.get('cfg').trim();
-      if (!txt) { localStorage.removeItem('kk_fbcfg'); location.reload(); return; }
-      const c = {};
-      for (const m of txt.matchAll(/(apiKey|authDomain|projectId|storageBucket|messagingSenderId|appId)["']?\s*:\s*["']([^"']+)["']/g)) c[m[1]] = m[2].trim();
-      if (!c.apiKey || !c.projectId) { toast('apiKey dan projectId tidak ditemukan'); return false; }
-      if (!c.authDomain) c.authDomain = c.projectId + '.firebaseapp.com';
-      localStorage.setItem('kk_fbcfg', JSON.stringify(c));
-      location.reload();
-    }, 'Hubungkan');
-}
 async function googleLogin() {
-  if (!fb) return toast('Hubungkan Firebase dulu lewat tombol di bawah');
+  if (!fb) return toast('Login Google belum aktif');
   try { await fb.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
   catch (err) { if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') toast(errMsg(err)); }
 }
 async function enter(s) {
   user = s; ui = { classId: null, period: 'w', ref: today(), page: 'home' };
   await loadData(); render();
+  if (localStorage.getItem('kk_dirty_' + user.uid)) sync();
   const sp = $('#splash'); if (sp) sp.remove();
 }
 (async () => {
   if (await initFb()) {
     fb.auth.onAuthStateChanged(u => {
-      if (u) enter({ uid: u.uid, email: u.email, name: u.displayName || (u.email || '').split('@')[0] });
-      else if (!user) showAuth();
+      if (u) {
+        const s = { uid: u.uid, email: u.email, name: u.displayName || (u.email || '').split('@')[0] };
+        try { localStorage.setItem('kk_fbsess', JSON.stringify(s)); } catch (e) {}
+        enter(s);
+      } else {
+        localStorage.removeItem('kk_fbsess');
+        if (!user) showAuth();
+      }
     });
   } else {
-    let s = null; try { s = JSON.parse(localStorage.getItem('kk_session')); } catch (e) {}
+    let s = null; try { s = JSON.parse(localStorage.getItem('kk_session') || localStorage.getItem('kk_fbsess')); } catch (e) {}
     s && s.uid ? enter(s) : showAuth();
   }
 })();
