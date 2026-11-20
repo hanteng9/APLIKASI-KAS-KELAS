@@ -199,6 +199,7 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .row .t small{display:block;overflow-wrap:anywhere}
 .acts{display:flex;align-items:center;gap:6px;flex:none}
 .mtop .brand{min-width:0}.mtop .brand b{white-space:nowrap}
+@media(max-width:899px){.mtop .brand{flex:none}.mtop>div:last-child{min-width:0;gap:2px}.mtop .chip{white-space:nowrap;font-size:11px;padding:2px 8px;min-width:0;overflow:hidden;text-overflow:ellipsis}.mtop .ib{flex:none}}
 .pin{letter-spacing:.55em;text-align:center;font:600 26px Fredoka,sans-serif;padding-left:calc(14px + .55em)!important}
 .lnk{display:block;margin:-6px 0 14px auto;padding:6px 0;font-weight:800;font-size:13px;color:var(--tealD)}
 .acard.c{text-align:center}.acard.c .logo{display:block;margin:0 auto}
@@ -1587,7 +1588,7 @@ function vAdmin() {
   const sis = isSw(prof) || !SIS.length ? '' : `<div class="hd" style="margin-top:24px"><div><h1 style="font-size:22px">Siswa</h1><p>${SIS.length} akun siswa, hanya bisa melihat</p></div></div><div class="ucards">${SIS.map((x, i) => `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(unOf(x.id) || x.email || '?'))}</span><div class="t"><b>${esc(unOf(x.id) || x.email || x.id)}</b><small>${unOf(x.id) ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div><div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button></div></div>`).join('')}</div>`;
   return `<div class="hd"><div><h1>${roleLbl(prof)}</h1><p>${isSw(prof) ? 'Kas bendahara dan sekretaris yang kodenya kamu masukkan' : 'Pantau semua bendahara, langsung saat ada perubahan'}</p></div>${isSw(prof) ? `<button class="btn" data-act="addCode">${ic('plus')}Masukkan kode</button>` : ''}</div>
   <section class="own"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat"><span>Total masuk</span><b>${fmt(tin)}</b></div><div class="stat"><span>Total saldo</span><b>${fmt(tin - tout)}</b></div></section>
-  ${OWN.length ? `<div class="ucards">${cards}</div>` : `<div class="card empty"><p>${isSw(prof) ? 'Belum ada kode. Minta kode ke bendahara atau sekretaris kelasmu, lalu masukkan.' : 'Belum ada bendahara yang mendaftar.'}</p></div>`}${sis}`;
+  ${OWN.length ? `<div class="ucards">${cards}</div>` : `<div class="card empty"><p>${isSw(prof) ? 'Belum ada kode. Minta kode ke bendahara atau sekretaris kelasmu, lalu masukkan.' : 'Belum ada bendahara yang mendaftar.'}</p>${isSw(prof) ? `<button class="btn" data-act="addCode">${ic('plus')}Masukkan kode</button>` : ''}</div>`}${sis}`;
 }
 async function googleLogin() {
   if (!fb) return toast('Login Google belum aktif');
