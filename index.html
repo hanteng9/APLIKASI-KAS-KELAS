@@ -715,7 +715,6 @@ function showAuth() {
   $('#seepw').onclick = () => { const p = $('#pw'); p.type = p.type === 'password' ? 'text' : 'password'; $('#seepw').textContent = p.type === 'password' ? 'Lihat' : 'Sembunyi'; };
   $('#af').onsubmit = submitAuth;
   const fw = $('#fpw'); if (fw) fw.onclick = forgot;
-  if (window.Capacitor) { $('#gbtn').hidden = true; document.querySelector('.or').hidden = true; }
   $('#gbtn').onclick = googleLogin;
   const sp = $('#splash'); if (sp) sp.remove();
 }
@@ -872,8 +871,16 @@ function vAdmin() {
 }
 async function googleLogin() {
   if (!fb) return toast('Login Google belum aktif');
-  try { await fb.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()); }
-  catch (err) { if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') toast(errMsg(err)); }
+  try {
+    const cap = window.Capacitor;
+    if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
+      const P = (cap.Plugins || {}).FirebaseAuthentication || cap.registerPlugin('FirebaseAuthentication');
+      const r = await P.signInWithGoogle({ skipNativeAuth: true });
+      const t = r && r.credential && r.credential.idToken;
+      if (!t) throw { message: 'Token Google tidak diterima, coba lagi' };
+      await fb.auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(t));
+    } else await fb.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+  } catch (err) { if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request' && !/cancel/i.test(err.message || '')) toast(errMsg(err)); }
 }
 async function enter(s) {
   user = s; ui = { classId: null, period: 'w', ref: today(), page: 'home' };
