@@ -203,7 +203,12 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .acard.c{text-align:center}.acard.c .logo{display:block;margin:0 auto}
 .own{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
 .own .stat{padding:14px}.own .stat b{font-size:24px}
+.bnav.five button{font-size:10px}
+.ro [data-act=pay]:not(.pill),.ro [data-act=addClass],.ro [data-act=editClass],.ro [data-act=delClass],.ro [data-act=addStudents],.ro [data-act=editStudent],.ro [data-act=delStudent],.ro [data-act=delPay],.ro [data-act=addExp],.ro [data-act=delExp]{display:none!important}
+.ro .pill{pointer-events:none}
+.ucards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px}
 @media(max-width:600px){
+  .own .stat b{font-size:15px;word-break:break-word}
   .row.s{flex-wrap:wrap}.row.s .t{flex:1 1 0;min-width:0}
   .row.s .acts{flex:1 1 100%;justify-content:flex-end}
   .row .amt{font-size:14px}.own .stat span{font-size:12px}
@@ -299,6 +304,7 @@ function normalize(d) {
   };
 }
 function save() {
+  if (RO) return;
   try { localStorage.setItem('kk_data_' + user.uid, JSON.stringify(data)); localStorage.setItem('kk_dirty_' + user.uid, '1'); } catch (e) { toast('Penyimpanan perangkat penuh'); }
   sync();
 }
@@ -443,7 +449,8 @@ function donut(k) {
 /* ---------- tampilan ---------- */
 const NAV = [['home', 'home', 'Beranda'], ['siswa', 'users', 'Siswa'], ['keluar', 'out', 'Pengeluaran'], ['riwayat', 'list', 'Riwayat']];
 function shell(view) {
-  const nav = c => NAV.map(([id, i, l]) => c === 'b'
+  const N = prof && prof.role === 'owner' ? (RO ? [['admin', 'users', 'Admin'], ...NAV] : [['admin', 'users', 'Admin']]) : NAV;
+  const nav = c => N.map(([id, i, l]) => c === 'b'
     ? `<button class="${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}">${ic(i)}<span>${l}</span></button>`
     : `<button class="nav ${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}">${ic(i)}${l}</button>`).join('');
   return `<div class="shell">
@@ -455,7 +462,7 @@ function shell(view) {
   <div><header class="mtop"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>
     <div><button class="btn sm ghost install" data-act="apk" hidden>Unduh APK</button>${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
   <main class="main">${view}</main></div></div>
-  <nav class="bnav" aria-label="Menu">${nav('b')}</nav>`;
+  <nav class="bnav ${N.length > 4 ? 'five' : ''}" style="grid-template-columns:repeat(${N.length},1fr)" aria-label="Menu">${nav('b')}</nav>`;
 }
 function toolbar() {
   const opts = data.classes.map(c => `<option value="${c.id}" ${c.id === ui.classId ? 'selected' : ''}>${esc(c.name)}</option>`).join('');
@@ -469,7 +476,7 @@ const noClass = () => `<div class="card empty">${ic('users', 'big')}<h3>Belum ad
 function vHome() {
   const k = calc(), c = k.c, n = c.students.length;
   const lunas = c.students.filter(s => statusOf(k, s.id)[0] === 'ok').length;
-  const first = esc((user.name || user.email || '').split(/[@\s]/)[0]);
+  const first = esc((RO ? (OWN.find(u => u.id === RO) || {}).email || '' : user.name || user.email || '').split(/[@\s]/)[0]);
   const items = k.pout.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 5).map(x => `<div class="row"><span class="ico" style="background:${CATS[x.cat] || CATS.Lainnya}">${ic('cash')}</span><div class="t"><b>${esc(x.desc)}</b><small>${esc(x.cat)}, ${dm(x.date)}</small></div><span class="amt out">${fmt(x.amount)}</span></div>`).join('');
   const roster = n ? c.students.map((s, i) => { const [cl, tx, p] = statusOf(k, s.id); return `<button class="pill" data-act="pay" data-id="${s.id}"><span class="nm">${i + 1}</span>${avatar(s, i)}<span class="t"><b>${esc(s.name)}</b><span class="chip ${cl}">${tx}${p > 0 ? ' ' + fmtK(p) : ''}</span></span></button>`; }).join('')
     : `<div class="empty">${ic('users', 'big')}<h3>Kelas masih kosong</h3><button class="btn" data-act="addStudents">${ic('plus')}Tambah siswa</button></div>`;
@@ -515,8 +522,10 @@ function vRiwayat() {
 }
 function render() {
   const keep = window.scrollY;
-  const v = !data.classes.length ? `<div class="hd"><div><h1>Halo, ${esc((user.name || user.email || 'Bendahara').split(/[@\s]/)[0])}!</h1><p>Mulai dari membuat kelas.</p></div></div>${noClass()}`
+  document.body.classList.toggle('ro', !!RO);
+  let v = ui.page === 'admin' && !RO ? vAdmin() : !data.classes.length ? `<div class="hd"><div><h1>Halo, ${esc((user.name || user.email || 'Bendahara').split(/[@\s]/)[0])}!</h1><p>Mulai dari membuat kelas.</p></div></div>${noClass()}`
     : ui.page === 'siswa' ? vSiswa() : ui.page === 'keluar' ? vKeluar() : ui.page === 'riwayat' ? vRiwayat() : vHome();
+  if (RO) v = roBanner() + v;
   $('#app').innerHTML = shell(v);
   setInstallVisible();
   window.scrollTo(0, keep);
@@ -536,13 +545,14 @@ function readClass(f) {
   return { name, iuran: { d: n('d'), w: n('w'), m: n('m') } };
 }
 const ACT = {
-  go: id => { ui.page = id; render(); window.scrollTo(0, 0); },
+  go: id => { if (id === 'admin') { RO = null; data = normalize(null); } ui.page = id; render(); window.scrollTo(0, 0); },
   per: id => { ui.period = id; render(); },
   prev: () => { ui.ref = shift(ui.period, ui.ref, -1); render(); },
   next: () => { ui.ref = shift(ui.period, ui.ref, 1); render(); },
   now: () => { ui.ref = today(); render(); },
   logout: async () => {
     if (unsub) { unsub(); unsub = null; }
+    ownStop(); if (unsubP) { unsubP(); unsubP = null; }
     if (fb) await fb.auth.signOut(); else localStorage.removeItem('kk_session');
     localStorage.removeItem('kk_fbsess'); sessionStorage.removeItem('kk_pin_ok'); prof = null;
     user = null; data = null; mode = 'in'; showAuth();
@@ -573,23 +583,13 @@ const ACT = {
   ownTog: async id => {
     const x = OWN.find(u => u.id === id);
     try { await fb.fs.collection('users').doc(id).update({ active: !x.active }); toast(x.active ? 'Bendahara dinonaktifkan' : 'Bendahara diaktifkan'); } catch (e) { toast('Gagal, cek aturan Firestore'); }
-    showOwner();
   },
   ownPin: id => ask('PIN bendahara ini dihapus. Ia akan membuat PIN baru saat masuk berikutnya.', async () => {
     try { await fb.fs.collection('users').doc(id).update({ pinHash: null }); toast('PIN direset'); } catch (e) { toast('Gagal reset PIN'); }
-    showOwner();
   }, 'Reset'),
-  ownView: async id => {
-    const x = OWN.find(u => u.id === id);
-    try {
-      const d = await fb.fs.collection('kaskelas').doc(id).get(), D = normalize(d.exists ? JSON.parse(d.data().json) : null);
-      let h = D.classes.map(c => { const i = sumA(D.payments.filter(p => p.classId === c.id)), o = sumA(D.expenses.filter(p => p.classId === c.id)); return `<div class="row"><div class="t"><b>${esc(c.name)}</b><small>${c.students.length} siswa, masuk ${fmt(i)}, keluar ${fmt(o)}</small></div><span class="amt in">${fmt(i - o)}</span></div>`; }).join('');
-      const nm = p => { const c = D.classes.find(k => k.id === p.classId); return c ? sname(c, p.studentId) : '-'; };
-      const L = [...D.payments.map(p => ({ ...p, t: 'in' })), ...D.expenses.map(p => ({ ...p, t: 'out' }))].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
-      h += '<p class="cap" style="margin:12px 0 4px">Aktivitas terakhir</p>' + L.map(p => `<div class="row"><div class="t"><b>${p.t === 'in' ? esc(nm(p)) : esc(p.desc)}</b><small>${dmy(p.date)}</small></div><span class="amt ${p.t}">${p.t === 'in' ? '+ ' : '- '}${fmt(p.amount)}</span></div>`).join('');
-      modal(esc(x.email || ''), D.classes.length ? h : '<p class="msg">Belum ada data.</p>', () => {}, 'Tutup');
-    } catch (e) { toast('Gagal memuat data'); }
-  },
+  ownView: id => { RO = id; data = OWND[id] ? OWND[id].d : normalize(null); ui = { classId: null, period: 'w', ref: today(), page: 'home' }; render(); window.scrollTo(0, 0); },
+  ownBack: () => { RO = null; data = normalize(null); ui.page = 'admin'; render(); window.scrollTo(0, 0); },
+  ownCopy: id => navigator.clipboard.writeText(ownText(id)).then(() => toast('Data disalin'), () => toast('Gagal menyalin')),
   recheck: () => gate(user),
   addClass: () => modal('Kelas baru', classForm(), f => {
     const v = readClass(f); if (!v) return false;
@@ -656,6 +656,7 @@ const ACT = {
 };
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act]');
+  if (t && RO && ['pay', 'addClass', 'editClass', 'delClass', 'addStudents', 'editStudent', 'delStudent', 'delPay', 'addExp', 'delExp'].includes(t.dataset.act)) return toast('Mode lihat saja');
   if (t && ACT[t.dataset.act]) ACT[t.dataset.act](t.dataset.id, t);
 });
 document.addEventListener('change', e => { if (e.target.id === 'selClass') { ui.classId = e.target.value; render(); } });
@@ -753,7 +754,7 @@ async function forgot() {
 }
 
 /* ---------- profil, PIN, peran (disimpan di database) ---------- */
-let prof = null, OWN = [];
+let prof = null, OWN = [], OWND = {}, RO = null, unsubU = null, unsubK = null, unsubP = null;
 const OWNER_MAILS = ['huyrehan@gmail.com'];
 const pinH = p => hash(user.uid + ':kk:' + p);
 const hideSplash = () => { const sp = $('#splash'); if (sp) sp.remove(); };
@@ -775,6 +776,13 @@ async function gate(s) {
     try { prof = JSON.parse(localStorage.getItem('kk_prof_' + s.uid)); } catch (x) {}
     if (!prof) { toast('Gagal memuat akun, cek koneksi internet'); await fb.auth.signOut(); user = null; return showAuth(); }
   }
+  if (unsubP) unsubP();
+  unsubP = fb.fs.collection('users').doc(s.uid).onSnapshot(snap => {
+    if (!snap.exists || !user || user.uid !== s.uid) return;
+    const was = prof; prof = snap.data(); cacheProf();
+    if (prof.role !== 'owner' && !prof.active) { if (was.active) { if (unsub) { unsub(); unsub = null; } sessionStorage.removeItem('kk_pin_ok'); showPending(); } }
+    else if (was.role !== 'owner' && !was.active) gate(user);
+  }, () => {});
   if (prof.role !== 'owner' && !prof.active) return showPending();
   if (sessionStorage.getItem('kk_pin_ok') === s.uid) return start();
   showPin();
@@ -823,15 +831,50 @@ function forgotPin() {
     reauth(f.get('pw')).then(() => fb.fs.collection('users').doc(user.uid).update({ pinHash: null })).then(() => { prof.pinHash = null; cacheProf(); showPin(); }).catch(e => toast(errMsg(e)));
   }, 'Lanjut');
 }
-async function showOwner() {
-  hideSplash();
-  $('#app').innerHTML = '<main class="main" style="margin:auto"><p class="msg">Memuat...</p></main>';
-  try { OWN = (await fb.fs.collection('users').get()).docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner'); } catch (e) { toast('Gagal memuat pengguna'); }
-  const on = OWN.filter(x => x.active).length;
-  const rows = OWN.map((x, i) => `<div class="row s"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(x.email || '?'))}</span><div class="t"><b>${esc(x.email || x.id)}</b><small><span class="chip ${x.active ? 'ok' : 'mid'}">${x.active ? 'Aktif' : 'Menunggu'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div><div class="acts"><button class="btn sm ghost" data-act="ownView" data-id="${x.id}">Lihat</button><button class="btn sm ${x.active ? 'warn' : ''}" data-act="ownTog" data-id="${x.id}">${x.active ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button></div></div>`).join('');
-  $('#app').innerHTML = `<main class="main" style="margin:auto"><div class="hd"><div><h1>Dashboard Pengelola</h1><p>${esc(user.email || '')}</p></div><div class="acts"><button class="btn sm ghost" data-act="chpin">${ic('key')}Ganti PIN</button><button class="btn sm warn" data-act="logout">${ic('out')}Keluar</button></div></div>
-  <section class="own"><div class="stat hero"><span>Bendahara</span><b>${OWN.length}</b></div><div class="stat"><span>Aktif</span><b>${on}</b></div><div class="stat"><span>Menunggu</span><b>${OWN.length - on}</b></div></section>
-  <div class="card"><h3>Akun bendahara</h3><p class="cap">Aktifkan akun baru agar bisa memakai aplikasi.</p>${OWN.length ? `<div class="rows">${rows}</div>` : '<div class="empty"><p>Belum ada bendahara yang mendaftar.</p></div>'}</div></main>`;
+function ownStop() { if (unsubU) unsubU(); if (unsubK) unsubK(); unsubU = unsubK = null; RO = null; OWND = {}; }
+function showOwner() {
+  hideSplash(); ownStop();
+  ui = { classId: null, period: 'w', ref: today(), page: 'admin' }; data = normalize(null);
+  unsubU = fb.fs.collection('users').onSnapshot(q => { OWN = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner'); if (!RO) render(); }, () => toast('Gagal memuat pengguna, cek aturan Firestore'));
+  unsubK = fb.fs.collection('kaskelas').onSnapshot(q => {
+    q.docs.forEach(d => { try { OWND[d.id] = { d: normalize(JSON.parse(d.data().json)), t: d.data().t }; } catch (e) {} });
+    q.docChanges().forEach(c => { if (c.type === 'removed') delete OWND[c.doc.id]; });
+    if (RO) data = OWND[RO] ? OWND[RO].d : normalize(null);
+    render();
+  }, () => {});
+  render();
+}
+const ownD = id => (OWND[id] || { d: normalize(null) }).d;
+function roBanner() {
+  const x = OWN.find(u => u.id === RO) || {};
+  return `<div class="card" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div style="min-width:0"><b style="word-break:break-all">${esc(x.email || RO)}</b><p class="cap" style="margin:0">Mode lihat saja, berubah langsung saat bendahara mencatat</p></div><div class="acts"><button class="btn sm ghost" data-act="ownCopy" data-id="${RO}">Salin data</button><button class="btn sm" data-act="ownBack">Kembali</button></div></div>`;
+}
+function ownText(id) {
+  const x = OWN.find(u => u.id === id) || {}, D = ownD(id);
+  let t = 'KAS KELAS - ' + (x.email || id) + '\n';
+  D.classes.forEach(c => {
+    const P = D.payments.filter(p => p.classId === c.id), E = D.expenses.filter(p => p.classId === c.id);
+    t += `\nKelas ${c.name}: masuk ${fmt(sumA(P))}, keluar ${fmt(sumA(E))}, saldo ${fmt(sumA(P) - sumA(E))}\nSiswa:\n`;
+    c.students.forEach((s, i) => { t += `${i + 1}. ${s.name}: ${fmt(sumA(P.filter(p => p.studentId === s.id)))}\n`; });
+    t += 'Catatan:\n';
+    [...P.map(p => ({ ...p, k: 'Masuk', n: sname(c, p.studentId) })), ...E.map(p => ({ ...p, k: 'Keluar', n: p.desc }))].sort((a, b) => b.date.localeCompare(a.date)).forEach(p => { t += `${p.date} ${p.k} ${fmt(p.amount)} ${p.n}\n`; });
+  });
+  return t;
+}
+function vAdmin() {
+  const all = OWN.map(x => ownD(x.id)), on = OWN.filter(x => x.active).length;
+  const tin = all.reduce((a, D) => a + sumA(D.payments), 0), tout = all.reduce((a, D) => a + sumA(D.expenses), 0);
+  const cards = OWN.map((x, i) => {
+    const D = ownD(x.id), o = OWND[x.id], inn = sumA(D.payments), out = sumA(D.expenses), sw = D.classes.reduce((a, c) => a + c.students.length, 0);
+    const cl = D.classes.map(c => { const a = sumA(D.payments.filter(p => p.classId === c.id)), b = sumA(D.expenses.filter(p => p.classId === c.id)); return `<div class="row"><div class="t"><b>${esc(c.name)}</b><small>${c.students.length} siswa, masuk ${fmt(a)}, keluar ${fmt(b)}</small></div><span class="amt in">${fmt(a - b)}</span></div>`; }).join('');
+    return `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(x.email || '?'))}</span><div class="t"><b>${esc(x.email || x.id)}</b><small><span class="chip ${x.active ? 'ok' : 'mid'}">${x.active ? 'Aktif' : 'Menunggu'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div>
+    <div class="own" style="margin:8px 0"><div class="stat"><span>Masuk</span><b>${fmt(inn)}</b></div><div class="stat"><span>Keluar</span><b>${fmt(out)}</b></div><div class="stat"><span>Saldo</span><b>${fmt(inn - out)}</b></div></div>
+    <p class="cap" style="margin-bottom:6px">${D.classes.length} kelas, ${sw} siswa, ${D.payments.length + D.expenses.length} catatan. Aktivitas terakhir: ${o && o.t ? new Date(o.t).toLocaleString('id-ID') : 'belum ada'}</p>${cl ? `<div class="rows">${cl}</div>` : ''}
+    <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button><button class="btn sm ${x.active ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${x.active ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button></div></div>`;
+  }).join('');
+  return `<div class="hd"><div><h1>Admin</h1><p>Pantau semua bendahara, langsung saat ada perubahan</p></div></div>
+  <section class="own"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat"><span>Total masuk</span><b>${fmt(tin)}</b></div><div class="stat"><span>Total saldo</span><b>${fmt(tin - tout)}</b></div></section>
+  ${OWN.length ? `<div class="ucards">${cards}</div>` : '<div class="card empty"><p>Belum ada bendahara yang mendaftar.</p></div>'}`;
 }
 async function googleLogin() {
   if (!fb) return toast('Login Google belum aktif');
