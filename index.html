@@ -250,11 +250,24 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .xa .ib.ph{background:var(--tealL);color:var(--tealD)}
 /* menu bawah gaya pil melayang, ikon saja */
 @media(max-width:899px){
-  .bnav{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));padding:5px 6px;border:0;border-radius:999px;background:rgba(38,38,40,.94);box-shadow:0 8px 24px rgba(0,0,0,.28);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
-  .bnav button{min-height:46px;padding:0;justify-content:center;border-radius:999px;color:#fff;background:none}
+  .bnav{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));padding:5px 6px;border-radius:999px;background:#fff;border:1px solid var(--line);box-shadow:0 8px 24px rgba(30,43,74,.16)}
+  .bnav button{min-height:46px;padding:0;justify-content:center;border-radius:999px;color:var(--mut);background:none}
   .bnav button span{display:none}
   .bnav button .i{width:25px;height:25px}
-  .bnav button.on{color:#fff;background:rgba(255,255,255,.2)}
+  .bnav button.on{color:var(--tealD);background:var(--tealL)}
+}
+@media(min-width:900px){
+  .side .nav[data-act=go]{display:none}
+  .bnav{display:flex;flex-direction:column;gap:4px;position:fixed;left:93px;top:50%;transform:translateY(-50%);width:64px;padding:6px;border-radius:999px;background:#fff;border:1px solid var(--line);box-shadow:0 8px 24px rgba(30,43,74,.16);z-index:30}
+  .bnav button{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;padding:0;border-radius:999px;color:var(--mut);background:none}
+  .bnav button span{display:none}
+  .bnav button .i{width:25px;height:25px}
+  .bnav button:hover{background:var(--bg)}
+  .bnav button.on{color:var(--tealD);background:var(--tealL)}
+  #gal .gh,#gal .gf{position:absolute!important;left:0;right:0;z-index:2!important;pointer-events:none}
+  #gal .gh>*,#gal .gf>*{pointer-events:auto}
+  #gal .gh{top:0;background:linear-gradient(rgba(0,0,0,.6),transparent)}
+  #gal .gf{bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.6))}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 
@@ -413,9 +426,9 @@ function openGal(list, i) {
   const old = $('#gal'); if (old) old.remove();
   const g = document.createElement('div'); g.id = 'gal';
   g.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(8,12,20,.97);display:flex;flex-direction:column;color:#fff;overflow:hidden';
-  g.innerHTML = `<div id="galB" style="position:absolute;inset:0;z-index:0;background:center/cover no-repeat;filter:blur(28px) brightness(.45);transform:scale(1.2)"></div><div style="position:relative;z-index:1;display:flex;align-items:center;gap:8px;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 12px"><div id="galT" style="flex:1;min-width:0"></div><button type="button" class="btn sm" id="galD">${ic('dl')}Unduh</button><button type="button" class="btn sm ghost" id="galX">Tutup</button></div>
+  g.innerHTML = `<div class="gh" style="position:relative;z-index:1;display:flex;align-items:center;gap:8px;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 12px"><div id="galT" style="flex:1;min-width:0"></div><button type="button" class="btn sm" id="galD">${ic('dl')}Unduh</button><button type="button" class="btn sm ghost" id="galX">Tutup</button></div>
   <div id="galS" style="position:relative;z-index:1;flex:1;min-height:0;overflow:auto;display:flex;touch-action:pan-x pan-y"><img id="galI" alt="Struk" style="display:none"><div id="galM" style="margin:auto;font-weight:700"></div></div>
-  <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px))"><button type="button" class="btn sm ghost" id="galP" aria-label="Sebelumnya">${ic('l')}</button><span id="galN" style="font-weight:700"></span><button type="button" class="btn sm ghost" id="galQ" aria-label="Berikutnya">${ic('r')}</button></div>`;
+  <div class="gf" style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px))"><button type="button" class="btn sm ghost" id="galP" aria-label="Sebelumnya">${ic('l')}</button><span id="galN" style="font-weight:700"></span><button type="button" class="btn sm ghost" id="galQ" aria-label="Berikutnya">${ic('r')}</button></div>`;
   document.body.appendChild(g);
   const prevOv = document.body.style.overflow; document.body.style.overflow = 'hidden';
   let cur = i, zoom = false, url = '', tx = null;
@@ -432,8 +445,8 @@ function openGal(list, i) {
     const x = list[cur], my = cur; zoom = false; url = '';
     $('#galT').innerHTML = `<b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.desc)}</b><small style="opacity:.75">${dmy(x.date)}, ${fmt(x.amount)}</small>`;
     $('#galN').textContent = (cur + 1) + ' / ' + n;
-    const m = $('#galM'); im.style.display = 'none'; m.textContent = 'Memuat foto...'; $('#galB').style.backgroundImage = 'none';
-    try { const u = await fotoGet(x); if (my !== cur || !$('#gal')) return; url = u; im.src = u; $('#galB').style.backgroundImage = 'url("' + u + '")'; fit(); m.textContent = ''; }
+    const m = $('#galM'); im.style.display = 'none'; m.textContent = 'Memuat foto...';
+    try { const u = await fotoGet(x); if (my !== cur || !$('#gal')) return; url = u; im.src = u; fit(); m.textContent = ''; }
     catch (e) { if (my === cur && $('#gal')) m.textContent = e && e.code === 'permission-denied' ? 'Akun ini belum diizinkan membaca foto. Perbarui aturan Firestore untuk koleksi foto.' : 'Foto tidak bisa dimuat. Cek koneksi internet.'; }
   }
   const go = d => { if (n < 2) return; cur = (cur + d + n) % n; show(); };
@@ -645,7 +658,7 @@ const NAV = [['home', 'home', 'Beranda'], ['siswa', 'users', 'Siswa'], ['keluar'
 function shell(view) {
   const N = prof && prof.role === 'owner' ? (RO ? [['admin', 'users', 'Admin'], ...NAV.filter(x => x[0] !== 'ai')] : [['admin', 'users', 'Admin']]) : NAV;
   const nav = c => N.map(([id, i, l]) => c === 'b'
-    ? `<button class="${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}" aria-label="${l}">${ic(i)}<span>${l}</span></button>`
+    ? `<button class="${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}" aria-label="${l}" title="${l}">${ic(i)}<span>${l}</span></button>`
     : `<button class="nav ${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}">${ic(i)}${l}</button>`).join('');
   return `<div class="shell">
   <aside class="side"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>${nav('s')}<div class="sp"></div>
