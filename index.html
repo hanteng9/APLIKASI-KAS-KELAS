@@ -679,10 +679,10 @@ function shell(view) {
   return `<div class="shell">
   <aside class="side"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>${nav('s')}<div class="sp"></div>
     <button class="nav install" data-act="install" hidden>${ic('dl')}Download aplikasi</button>
-    <div class="me">${esc(user.email || user.name || '')}</div>
-    ${fb ? `<button class="nav" data-act="chpin">${ic('key')}Ganti PIN</button>` : ''}<button class="nav" data-act="logout">${ic('out')}Keluar akun</button></aside>
+    <div class="me"><b style="display:block;color:var(--tealD)">${roleLbl(prof)}</b>${esc(user.email || user.name || '')}</div>
+    ${fb && prof && prof.role !== 'owner' && !isSw(prof) ? `<button class="nav" data-act="myToken">${ic('users')}Kode kelas</button>` : ''}${fb ? `<button class="nav" data-act="chpin">${ic('key')}Ganti PIN</button>` : ''}<button class="nav" data-act="logout">${ic('out')}Keluar akun</button></aside>
   <div><header class="mtop"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>
-    <div><button class="btn sm ghost install" data-act="install" hidden>Pasang Aplikasi</button>${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
+    <div><span class="chip ok">${roleLbl(prof)}</span><button class="btn sm ghost install" data-act="install" hidden>Pasang Aplikasi</button>${fb && prof && prof.role !== 'owner' && !isSw(prof) ? `<button class="ib" data-act="myToken" aria-label="Kode kelas">${ic('users')}</button>` : ''}${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
   <main class="main">${view}</main></div></div>
   <nav class="bnav ${N.length > 4 ? 'five' : ''}" style="grid-template-columns:repeat(${N.length},1fr)" aria-label="Menu">${nav('b')}</nav>`;
 }
@@ -848,6 +848,7 @@ const ACT = {
         const b = fb.fs.batch();
         b.delete(fb.fs.collection('users').doc(id));
         b.delete(fb.fs.collection('kaskelas').doc(id));
+        if (x.token) b.delete(fb.fs.collection('tokens').doc(x.token));
         if (UNM[id]) b.delete(fb.fs.collection('usernames').doc(unKey(UNM[id].toLowerCase())));
         await b.commit(); toast('Akun dihapus');
       } catch (e) { toast('Gagal, cek aturan Firestore'); }
@@ -866,6 +867,18 @@ const ACT = {
   },
   ownCopy: id => navigator.clipboard.writeText(ownText(id)).then(() => toast('Data disalin'), () => toast('Gagal menyalin')),
   recheck: () => gate(user),
+  myToken: () => { if (!prof.token) ensureToken().then(() => { if (prof.token) ACT.myToken(); else toast('Kode belum siap, coba lagi sebentar'); }); else modal('Kode kelas', `<p class="msg">Bagikan kode ini ke siswa agar bisa melihat kas kelasmu. Tiap bendahara atau sekretaris punya kode sendiri.</p><div class="f"><input readonly value="${esc(prof.token)}" aria-label="Kode kelas" style="font:600 26px Fredoka,sans-serif;letter-spacing:4px;text-align:center"></div>`, () => { navigator.clipboard.writeText(prof.token).then(() => toast('Kode disalin'), () => toast('Gagal menyalin')); }, 'Salin'); },
+  addCode: () => modal('Masukkan kode', fld('Kode bendahara atau sekretaris', '<input name="code" maxlength="12" autocapitalize="characters" autocomplete="off" required placeholder="Contoh: AB12CD34">') + '<p class="cap">Boleh memasukkan lebih dari satu kode.</p>', f => {
+    const code = f.get('code').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (code.length !== 8) { toast('Kode harus 8 karakter'); return false; }
+    fb.fs.collection('tokens').doc(code).get().then(async d => {
+      const aid = d.exists && d.data().uid; if (!aid) return toast('Kode tidak ditemukan');
+      if (SUBS[aid]) return toast('Kode ini sudah dimasukkan');
+      await fb.fs.collection('links').doc(user.uid).collection('admins').doc(aid).set({ code, t: Date.now() });
+      toast('Kode berhasil dimasukkan');
+    }).catch(() => toast('Kode tidak ditemukan atau gagal terhubung'));
+  }, 'Tambah'),
+  delCode: id => ask('Kode ini dilepas dari akunmu. Kamu tidak bisa lagi melihat kas bendahara ini sampai memasukkan kodenya lagi.', () => { fb.fs.collection('links').doc(user.uid).collection('admins').doc(id).delete().then(() => toast('Kode dilepas'), () => toast('Gagal melepas kode')); }, 'Lepas'),
   addClass: () => modal('Kelas baru', classForm(), f => {
     const v = readClass(f); if (!v) return false;
     const c = { id: uid(), name: v.name, iuran: v.iuran, tipe: v.tipe, students: [] };
@@ -1406,10 +1419,11 @@ async function savePin(p) {
 const cacheProf = () => { try { localStorage.setItem('kk_prof_' + user.uid, JSON.stringify(prof)); } catch (e) {} };
 const isOn = p => !!(p && (p.active || !p.off));
 const isSw = p => !!(p && String(p.role || '').toLowerCase() === 'siswa');
+const roleLbl = p => !p ? 'Bendahara / Sekretaris' : p.role === 'owner' ? 'Owner' : isSw(p) ? 'Siswa' : 'Bendahara / Sekretaris';
 function pickRole() {
   hideSplash();
   return new Promise(ok => {
-    $('#app').innerHTML = `<div class="auth" style="grid-template-columns:1fr"><section class="formside"><div class="acard c"><img class="logo" src="icon.svg" alt=""><h1>Kamu sebagai apa?</h1><p class="sub">Pilih peranmu di kas kelas. Pilihan ini tidak bisa diubah sendiri.</p><button class="btn block" data-role="admin" type="button">Bendahara / Sekretaris</button><p style="font-size:13px;color:var(--mut);margin:6px 0 16px">Bisa mencatat dan mengubah semua catatan kas.</p><button class="btn ghost block" data-role="siswa" type="button">Siswa</button><p style="font-size:13px;color:var(--mut);margin:6px 0 16px">Hanya bisa melihat semua aktivitas kas.</p><button class="btn warn block instl" data-act="logout" type="button">Keluar akun</button></div></section></div>`;
+    $('#app').innerHTML = `<div class="auth" style="grid-template-columns:1fr"><section class="formside"><div class="acard c"><img class="logo" src="icon.svg" alt=""><h1>Kamu sebagai apa?</h1><p class="sub">Pilih peranmu di kas kelas. Pilihan ini tidak bisa diubah sendiri.</p><button class="btn block" data-role="admin" type="button">Bendahara / Sekretaris</button><p style="font-size:13px;color:var(--mut);margin:6px 0 16px">Bisa mencatat dan mengubah semua catatan kas.</p><button class="btn ghost block" data-role="siswa" type="button">Siswa</button><p style="font-size:13px;color:var(--mut);margin:6px 0 16px">Hanya bisa melihat kas bendahara atau sekretaris yang kodenya kamu masukkan.</p><button class="btn warn block instl" data-act="logout" type="button">Keluar akun</button></div></section></div>`;
     document.querySelectorAll('[data-role]').forEach(b => b.onclick = () => { document.querySelectorAll('[data-role]').forEach(x => x.disabled = true); ok(b.dataset.role); });
   });
 }
@@ -1493,15 +1507,48 @@ function forgotPin() {
     reauth(f.get('pw')).then(() => fb.fs.collection('users').doc(user.uid).update({ pinHash: null })).then(() => { prof.pinHash = null; cacheProf(); showPin(); }).catch(e => toast(errMsg(e)));
   }, 'Lanjut');
 }
-let UNM = {}, unsubN = null;
+let UNM = {}, unsubN = null, SUBS = {}, askedCode = false;
+const TKA = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+async function ensureToken() {
+  if (!fb || !prof || prof.token) return;
+  try { const d = await fb.fs.collection('users').doc(user.uid).get(); if (d.exists && d.data().token) { prof.token = d.data().token; cacheProf(); return; } } catch (e) { return; }
+  for (let i = 0; i < 5; i++) {
+    const a = new Uint8Array(8); crypto.getRandomValues(a);
+    const code = Array.from(a, v => TKA[v % TKA.length]).join('');
+    try {
+      await fb.fs.collection('tokens').doc(code).set({ uid: user.uid });
+      await fb.fs.collection('users').doc(user.uid).update({ token: code });
+      prof.token = code; cacheProf(); return;
+    } catch (e) {}
+  }
+}
+function watchLinks() {
+  OWN = []; askedCode = false;
+  unsubU = fb.fs.collection('links').doc(user.uid).collection('admins').onSnapshot(q => {
+    const ids = q.docs.map(d => d.id);
+    ids.forEach(id => {
+      if (SUBS[id]) return;
+      const a = fb.fs.collection('users').doc(id).onSnapshot(s => { OWN = OWN.filter(o => o.id !== id); if (s.exists && s.data().role === 'admin') OWN.push({ id, ...s.data() }); if (!RO) render(); }, () => {});
+      const b = fb.fs.collection('kaskelas').doc(id).onSnapshot(s => {
+        if (s.exists) { try { OWND[id] = { d: normalize(JSON.parse(s.data().json)), t: s.data().t }; } catch (e) {} } else delete OWND[id];
+        if (RO === id) data = OWND[id] ? OWND[id].d : normalize(null);
+        render();
+      }, () => {});
+      SUBS[id] = [a, b];
+    });
+    Object.keys(SUBS).forEach(id => { if (!ids.includes(id)) { SUBS[id].forEach(u => u()); delete SUBS[id]; OWN = OWN.filter(o => o.id !== id); delete OWND[id]; if (RO === id) { RO = null; data = normalize(null); ui.page = 'admin'; } } });
+    render();
+    if (!ids.length && !askedCode) { askedCode = true; ACT.addCode(); }
+  }, () => toast('Gagal memuat kode kelas, cek aturan Firestore'));
+}
 const unOf = id => UNM[id] || ((OWN.find(o => o.id === id) || {}).uname || '');
-function ownStop() { if (unsubU) unsubU(); if (unsubK) unsubK(); if (unsubN) unsubN(); unsubU = unsubK = unsubN = null; RO = null; OWND = {}; UNM = {}; SIS = []; }
+function ownStop() { if (unsubU) unsubU(); if (unsubK) unsubK(); if (unsubN) unsubN(); unsubU = unsubK = unsubN = null; Object.keys(SUBS).forEach(k => { SUBS[k].forEach(u => u()); delete SUBS[k]; }); RO = null; OWND = {}; UNM = {}; SIS = []; }
 function showOwner() {
   hideSplash(); ownStop();
   ui = { classId: null, period: 'w', ref: today(), page: 'admin' }; data = normalize(null);
-  unsubU = (isSw(prof) ? fb.fs.collection('users').where('role', '==', 'admin') : fb.fs.collection('users')).onSnapshot(q => { OWN = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner' && !isSw(x)); SIS = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => isSw(x)); if (!RO) render(); }, () => toast('Gagal memuat pengguna, cek aturan Firestore'));
-  unsubN = fb.fs.collection('usernames').onSnapshot(q => { UNM = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.uid) UNM[v.uid] = v.name || d.id; }); render(); }, () => {});
-  unsubK = fb.fs.collection('kaskelas').onSnapshot(q => {
+  if (isSw(prof)) watchLinks(); else unsubU = fb.fs.collection('users').onSnapshot(q => { OWN = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner' && !isSw(x)); SIS = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => isSw(x)); if (!RO) render(); }, () => toast('Gagal memuat pengguna, cek aturan Firestore'));
+  if (!isSw(prof)) unsubN = fb.fs.collection('usernames').onSnapshot(q => { UNM = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.uid) UNM[v.uid] = v.name || d.id; }); render(); }, () => {});
+  if (!isSw(prof)) unsubK = fb.fs.collection('kaskelas').onSnapshot(q => {
     q.docs.forEach(d => { try { OWND[d.id] = { d: normalize(JSON.parse(d.data().json)), t: d.data().t }; } catch (e) {} });
     q.docChanges().forEach(c => { if (c.type === 'removed') delete OWND[c.doc.id]; });
     if (RO) data = OWND[RO] ? OWND[RO].d : normalize(null);
@@ -1532,15 +1579,15 @@ function vAdmin() {
   const cards = OWN.map((x, i) => {
     const D = ownD(x.id), o = OWND[x.id], inn = sumA(D.payments), out = sumA(D.expenses), sw = D.classes.reduce((a, c) => a + c.students.length, 0);
     const cl = D.classes.map(c => { const a = sumA(D.payments.filter(p => p.classId === c.id)), b = sumA(D.expenses.filter(p => p.classId === c.id)); return `<div class="row"><div class="t"><b>${esc(c.name)}</b><small>${c.students.length} siswa, masuk ${fmt(a)}, keluar ${fmt(b)}</small></div><span class="amt in">${fmt(a - b)}</span>${isSw(prof) ? '' : `<button class="ib del" data-act="ownDelClass" data-id="${x.id}" data-cid="${c.id}" aria-label="Hapus kelas ${esc(c.name)}">${ic('trash')}</button>`}</div>`; }).join('');
-    return `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(unOf(x.id) || x.email || '?'))}</span><div class="t"><b>${esc(unOf(x.id) || x.email || x.id)}</b><small>${unOf(x.id) ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div>
+    return `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(unOf(x.id) || x.email || '?'))}</span><div class="t"><b>${esc(unOf(x.id) || x.email || x.id)}</b><small>${unOf(x.id) ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}${x.token && !isSw(prof) ? ' · Kode ' + esc(x.token) : ''}</small></div></div>
     <div class="own" style="margin:8px 0"><div class="stat"><span>Masuk</span><b>${fmt(inn)}</b></div><div class="stat"><span>Keluar</span><b>${fmt(out)}</b></div><div class="stat"><span>Saldo</span><b>${fmt(inn - out)}</b></div></div>
     <p class="cap" style="margin-bottom:6px">${D.classes.length} kelas, ${sw} siswa, ${D.payments.length + D.expenses.length} catatan. Aktivitas terakhir: ${o && o.t ? new Date(o.t).toLocaleString('id-ID') : 'belum ada'}</p>${cl ? `<div class="rows">${cl}</div>` : ''}
-    <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button>${isSw(prof) ? '' : `<button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button>`}</div></div>`;
+    <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button>${isSw(prof) ? `<button class="btn sm warn" data-act="delCode" data-id="${x.id}">Lepas kode</button>` : `<button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button>`}</div></div>`;
   }).join('');
   const sis = isSw(prof) || !SIS.length ? '' : `<div class="hd" style="margin-top:24px"><div><h1 style="font-size:22px">Siswa</h1><p>${SIS.length} akun siswa, hanya bisa melihat</p></div></div><div class="ucards">${SIS.map((x, i) => `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(unOf(x.id) || x.email || '?'))}</span><div class="t"><b>${esc(unOf(x.id) || x.email || x.id)}</b><small>${unOf(x.id) ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div><div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button></div></div>`).join('')}</div>`;
-  return `<div class="hd"><div><h1>Admin</h1><p>Pantau semua bendahara, langsung saat ada perubahan</p></div></div>
+  return `<div class="hd"><div><h1>Admin</h1><p>Pantau semua bendahara, langsung saat ada perubahan</p></div>${isSw(prof) ? `<button class="btn" data-act="addCode">${ic('plus')}Masukkan kode</button>` : ''}</div>
   <section class="own"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat"><span>Total masuk</span><b>${fmt(tin)}</b></div><div class="stat"><span>Total saldo</span><b>${fmt(tin - tout)}</b></div></section>
-  ${OWN.length ? `<div class="ucards">${cards}</div>` : '<div class="card empty"><p>Belum ada bendahara yang mendaftar.</p></div>'}${sis}`;
+  ${OWN.length ? `<div class="ucards">${cards}</div>` : `<div class="card empty"><p>${isSw(prof) ? 'Belum ada kode. Minta kode ke bendahara atau sekretaris kelasmu, lalu masukkan.' : 'Belum ada bendahara yang mendaftar.'}</p></div>`}${sis}`;
 }
 async function googleLogin() {
   if (!fb) return toast('Login Google belum aktif');
@@ -1564,6 +1611,7 @@ async function googleLogin() {
 }
 async function enter(s) {
   user = s; ui = { classId: null, period: 'w', ref: today(), page: 'home' };
+  if (fb && prof && prof.role !== 'owner' && !isSw(prof)) ensureToken();
   await loadData(); render();
   if (localStorage.getItem('kk_dirty_' + user.uid)) sync();
   listen();
