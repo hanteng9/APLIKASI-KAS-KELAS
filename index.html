@@ -197,7 +197,7 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 /* perbaikan hp + PIN + dashboard */
 .row .t small{display:block;overflow-wrap:anywhere}
 .acts{display:flex;align-items:center;gap:6px;flex:none}
-.mtop .btn{padding:0 10px}.mtop .brand{min-width:0}.mtop .brand b{white-space:nowrap}
+.mtop .brand{min-width:0}.mtop .brand b{white-space:nowrap}
 .pin{letter-spacing:.55em;text-align:center;font:600 26px Fredoka,sans-serif;padding-left:calc(14px + .55em)!important}
 .lnk{display:block;margin:-6px 0 14px auto;padding:6px 0;font-weight:800;font-size:13px;color:var(--tealD)}
 .acard.c{text-align:center}.acard.c .logo{display:block;margin:0 auto}
@@ -455,11 +455,12 @@ function shell(view) {
     : `<button class="nav ${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}">${ic(i)}${l}</button>`).join('');
   return `<div class="shell">
   <aside class="side"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>${nav('s')}<div class="sp"></div>
-    <button class="nav install" data-act="apk" hidden>${ic('dl')}Unduh Aplikasi</button>
+    <button class="nav install" data-act="install" hidden>${ic('dl')}Download aplikasi</button>
+    <button class="nav install" data-act="apk" hidden>${ic('dl')}Download APK</button>
     <div class="me">${esc(user.email || user.name || '')}</div>
     ${fb ? `<button class="nav" data-act="chpin">${ic('key')}Ganti PIN</button>` : ''}<button class="nav" data-act="logout">${ic('out')}Keluar akun</button></aside>
   <div><header class="mtop"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>
-    <div><button class="btn sm ghost install" data-act="apk" hidden>Unduh Aplikasi</button>${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
+    <div><button class="btn sm ghost install" data-act="apk" hidden>Unduh APK</button>${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
   <main class="main">${view}</main></div></div>
   <nav class="bnav ${N.length > 4 ? 'five' : ''}" style="grid-template-columns:repeat(${N.length},1fr)" aria-label="Menu">${nav('b')}</nav>`;
 }
@@ -560,10 +561,15 @@ const ACT = {
     if (dip) { dip.prompt(); await dip.userChoice; dip = null; setInstallVisible(); }
     else toast('Buka menu browser lalu pilih "Pasang aplikasi" atau "Tambahkan ke layar utama"');
   },
-  apk: () => {
+  apk: async () => {
     const repo = (window.KAS_CONFIG || {}).githubRepo || location.hostname.split('.')[0] + '/' + location.pathname.split('/')[1];
-    const a = document.createElement('a'); a.href = 'https://github.com/' + repo + '/releases/latest/download/kas-kelas.apk'; a.download = 'kas-kelas.apk';
-    document.body.appendChild(a); a.click(); a.remove(); toast('Mengunduh aplikasi, buka file-nya untuk memasang');
+    toast('Mencari APK terbaru...');
+    try {
+      const r = await fetch('https://api.github.com/repos/' + repo + '/releases/latest');
+      const a = ((await r.json()).assets || []).find(x => /\.apk$/i.test(x.name));
+      if (!a) throw 0;
+      location.href = a.browser_download_url; toast('Mengunduh ' + a.name);
+    } catch (e) { toast('APK belum ada di GitHub Release'); window.open('https://github.com/' + repo + '/releases', '_blank'); }
   },
   chpin: () => modal('Ganti PIN',
     fld('PIN lama', '<input name="o" type="password" inputmode="numeric" maxlength="6" autocomplete="off" required>') +
@@ -657,7 +663,7 @@ document.addEventListener('change', e => { if (e.target.id === 'selClass') { ui.
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { const m = innerWidth < 640; if (m !== lastMobile && data) { lastMobile = m; render(); } }, 150); });
 
 /* ---------- pasang aplikasi ---------- */
-const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true || !!window.Capacitor;
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
 function setInstallVisible() {
   document.querySelectorAll('.install').forEach(b => { b.hidden = standalone(); });
 }
@@ -708,7 +714,8 @@ function showAuth() {
     </form>
     <div class="or">atau</div>
     <button class="gbtn" id="gbtn" type="button">${GOOGLE}Masuk dengan Google</button>
-    <button class="btn ghost block instl install" data-act="apk" type="button" hidden>${ic('dl')}Unduh Aplikasi</button>
+    <button class="btn ghost block instl install" data-act="install" type="button" hidden>${ic('dl')}Download aplikasi</button>
+    <button class="btn ghost block instl install" data-act="apk" type="button" hidden>${ic('dl')}Download APK</button>
     </div></section></div>`;
   setInstallVisible();
   document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; showAuth(); });
@@ -871,16 +878,23 @@ function vAdmin() {
 }
 async function googleLogin() {
   if (!fb) return toast('Login Google belum aktif');
+  const C = window.Capacitor, native = !!(C && C.isNativePlatform && C.isNativePlatform());
   try {
-    const cap = window.Capacitor;
-    if (cap && cap.isNativePlatform && cap.isNativePlatform()) {
-      const P = (cap.Plugins || {}).FirebaseAuthentication;
-      const r = P ? await P.signInWithGoogle({ skipNativeAuth: true }) : await cap.nativePromise('FirebaseAuthentication', 'signInWithGoogle', { skipNativeAuth: true });
-      const t = r && r.credential && r.credential.idToken;
-      if (!t) throw { message: 'Token Google tidak diterima, coba lagi' };
-      await fb.auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(t));
+    if (native) {
+      const P = C.Plugins && C.Plugins.FirebaseAuthentication;
+      if (!P) return toast('APK belum memuat plugin Google, build ulang dengan google-services.json');
+      const r = await P.signInWithGoogle();
+      const cr = r && r.credential;
+      if (!cr || !cr.idToken) return toast('Login Google gagal: token tidak diterima');
+      await fb.auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(cr.idToken, cr.accessToken || null));
     } else await fb.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
-  } catch (err) { if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request' && !/cancel/i.test(err.message || '')) toast(errMsg(err)); }
+  }
+  catch (err) {
+    const m = String((err && (err.message || err.code)) || err);
+    if (err && (err.code === 'auth/popup-closed-by-user' || err.code === 'auth/cancelled-popup-request')) return;
+    if (native && /cancel|12501|dismiss/i.test(m)) return;
+    toast(err && err.code ? errMsg(err) : 'Login Google gagal: ' + m);
+  }
 }
 async function enter(s) {
   user = s; ui = { classId: null, period: 'w', ref: today(), page: 'home' };
