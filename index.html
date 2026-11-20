@@ -197,7 +197,7 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 /* perbaikan hp + PIN + dashboard */
 .row .t small{display:block;overflow-wrap:anywhere}
 .acts{display:flex;align-items:center;gap:6px;flex:none}
-.mtop .brand{min-width:0}.mtop .brand b{white-space:nowrap}
+.mtop .btn{padding:0 10px}.mtop .brand{min-width:0}.mtop .brand b{white-space:nowrap}
 .pin{letter-spacing:.55em;text-align:center;font:600 26px Fredoka,sans-serif;padding-left:calc(14px + .55em)!important}
 .lnk{display:block;margin:-6px 0 14px auto;padding:6px 0;font-weight:800;font-size:13px;color:var(--tealD)}
 .acard.c{text-align:center}.acard.c .logo{display:block;margin:0 auto}
@@ -455,12 +455,11 @@ function shell(view) {
     : `<button class="nav ${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}">${ic(i)}${l}</button>`).join('');
   return `<div class="shell">
   <aside class="side"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>${nav('s')}<div class="sp"></div>
-    <button class="nav install" data-act="install" hidden>${ic('dl')}Download aplikasi</button>
-    <button class="nav install" data-act="apk" hidden>${ic('dl')}Download APK</button>
+    <button class="nav install" data-act="apk" hidden>${ic('dl')}Unduh Aplikasi</button>
     <div class="me">${esc(user.email || user.name || '')}</div>
     ${fb ? `<button class="nav" data-act="chpin">${ic('key')}Ganti PIN</button>` : ''}<button class="nav" data-act="logout">${ic('out')}Keluar akun</button></aside>
   <div><header class="mtop"><div class="brand"><img src="icon.svg" alt=""><b>Kas Kelas</b></div>
-    <div><button class="btn sm ghost install" data-act="apk" hidden>Unduh APK</button>${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
+    <div><button class="btn sm ghost install" data-act="apk" hidden>Unduh Aplikasi</button>${fb ? `<button class="ib" data-act="chpin" aria-label="Ganti PIN">${ic('key')}</button>` : ''}<button class="ib" data-act="logout" aria-label="Keluar akun">${ic('out')}</button></div></header>
   <main class="main">${view}</main></div></div>
   <nav class="bnav ${N.length > 4 ? 'five' : ''}" style="grid-template-columns:repeat(${N.length},1fr)" aria-label="Menu">${nav('b')}</nav>`;
 }
@@ -663,7 +662,7 @@ document.addEventListener('change', e => { if (e.target.id === 'selClass') { ui.
 let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() => { const m = innerWidth < 640; if (m !== lastMobile && data) { lastMobile = m; render(); } }, 150); });
 
 /* ---------- pasang aplikasi ---------- */
-const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true || !!window.Capacitor;
 function setInstallVisible() {
   document.querySelectorAll('.install').forEach(b => { b.hidden = standalone(); });
 }
@@ -714,14 +713,14 @@ function showAuth() {
     </form>
     <div class="or">atau</div>
     <button class="gbtn" id="gbtn" type="button">${GOOGLE}Masuk dengan Google</button>
-    <button class="btn ghost block instl install" data-act="install" type="button" hidden>${ic('dl')}Download aplikasi</button>
-    <button class="btn ghost block instl install" data-act="apk" type="button" hidden>${ic('dl')}Download APK</button>
+    <button class="btn ghost block instl install" data-act="apk" type="button" hidden>${ic('dl')}Unduh Aplikasi</button>
     </div></section></div>`;
   setInstallVisible();
   document.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { mode = b.dataset.m; showAuth(); });
   $('#seepw').onclick = () => { const p = $('#pw'); p.type = p.type === 'password' ? 'text' : 'password'; $('#seepw').textContent = p.type === 'password' ? 'Lihat' : 'Sembunyi'; };
   $('#af').onsubmit = submitAuth;
   const fw = $('#fpw'); if (fw) fw.onclick = forgot;
+  if (window.Capacitor) { $('#gbtn').hidden = true; document.querySelector('.or').hidden = true; }
   $('#gbtn').onclick = googleLogin;
   const sp = $('#splash'); if (sp) sp.remove();
 }
