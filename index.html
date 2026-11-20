@@ -193,7 +193,7 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
   .sel{flex:1 1 100%}.sel select{width:100%}
   .card{padding:18px}
   .pill{padding:10px;gap:9px}.av{width:36px;height:36px;font-size:13px}
-  #toast{bottom:100px}
+  #toast{bottom:110px}
 }
 /* perbaikan hp + PIN + dashboard */
 .row .t small{display:block;overflow-wrap:anywhere}
@@ -250,16 +250,17 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .xa .ib.ph{background:var(--tealL);color:var(--tealD)}
 /* menu bawah gaya pil melayang, ikon saja */
 @media(max-width:899px){
-  .bnav{left:12px;right:12px;bottom:calc(10px + env(safe-area-inset-bottom));padding:5px 6px;border-radius:999px;background:#fff;border:1px solid var(--line);box-shadow:0 8px 24px rgba(30,43,74,.16)}
-  .bnav button{min-height:46px;padding:0;justify-content:center;border-radius:999px;color:var(--mut);background:none}
+  .bnav{left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom));padding:6px;border-radius:999px;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(30,43,74,.06);box-shadow:0 12px 32px rgba(30,43,74,.2),0 2px 6px rgba(30,43,74,.08)}
+  .bnav button{min-height:46px;padding:0;justify-content:center;border-radius:999px;color:var(--mut);background:none;transition:background .15s,color .15s}
   .bnav button span{display:none}
   .bnav button .i{width:25px;height:25px}
   .bnav button.on{color:var(--tealD);background:var(--tealL)}
 }
 @media(min-width:900px){
-  .side .nav[data-act=go]{display:none}
-  .bnav{display:flex;flex-direction:column;gap:4px;position:fixed;left:93px;top:50%;transform:translateY(-50%);width:64px;padding:6px;border-radius:999px;background:#fff;border:1px solid var(--line);box-shadow:0 8px 24px rgba(30,43,74,.16);z-index:30}
-  .bnav button{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;padding:0;border-radius:999px;color:var(--mut);background:none}
+  .side .nav[data-act=go],.side .sp{display:none}
+  .main{padding-bottom:110px}
+  .bnav{display:flex;gap:6px;position:fixed;left:calc(125px + 50vw);bottom:22px;transform:translateX(-50%);padding:6px;border-radius:999px;background:rgba(255,255,255,.94);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);border:1px solid rgba(30,43,74,.06);box-shadow:0 12px 32px rgba(30,43,74,.2),0 2px 6px rgba(30,43,74,.08);z-index:30}
+  .bnav button{display:flex;align-items:center;justify-content:center;width:76px;min-height:48px;padding:0;border-radius:999px;color:var(--mut);background:none;transition:background .15s,color .15s}
   .bnav button span{display:none}
   .bnav button .i{width:25px;height:25px}
   .bnav button:hover{background:var(--bg)}
