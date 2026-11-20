@@ -199,7 +199,7 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .row .t small{display:block;overflow-wrap:anywhere}
 .acts{display:flex;align-items:center;gap:6px;flex:none}
 .mtop .brand{min-width:0}.mtop .brand b{white-space:nowrap}
-@media(max-width:899px){.mtop .brand{flex:none}.mtop>div:last-child{min-width:0;gap:2px}.mtop .chip{white-space:nowrap;font-size:11px;padding:2px 8px;min-width:0;overflow:hidden;text-overflow:ellipsis}.mtop .ib{flex:none}}
+@media(max-width:899px){.mtop{flex-wrap:wrap;row-gap:6px}.mtop .brand{flex:none}.mtop>div:last-child{flex:1 1 auto;flex-wrap:wrap;justify-content:flex-end;gap:4px}.mtop .chip{white-space:nowrap;font-size:11px;padding:2px 8px;flex:none}.mtop .btn{white-space:nowrap}.mtop .ib{flex:none}}
 .pin{letter-spacing:.55em;text-align:center;font:600 26px Fredoka,sans-serif;padding-left:calc(14px + .55em)!important}
 .lnk{display:block;margin:-6px 0 14px auto;padding:6px 0;font-weight:800;font-size:13px;color:var(--tealD)}
 .acard.c{text-align:center}.acard.c .logo{display:block;margin:0 auto}
@@ -729,7 +729,8 @@ function vSiswa() {
   <div class="card" style="margin-bottom:16px"><h3>Iuran kas</h3><div class="chips">${c.tipe ? `<span class="chip">Tipe ${PN[c.tipe]}</span>` : ''}<span class="chip">Harian ${fmt(c.iuran.d)}</span><span class="chip">Mingguan ${fmt(c.iuran.w)}</span><span class="chip">Bulanan ${fmt(c.iuran.m)}</span></div>
     <p class="cap" style="margin:14px 0 8px">Sistem pembayaran kelas ini</p><div class="seg">${Object.entries(PN).map(([q, t]) => `<button class="${(c.tipe || ui.period) === q ? 'on' : ''}" data-act="setTipe" data-id="${q}">${t}</button>`).join('')}</div></div>
   <div class="card" style="margin-bottom:16px"><h3>QRIS pembayaran</h3><p class="cap">${data.qris ? 'Tersimpan: ' + esc(qrisName(data.qris)) + '. Saat siswa bayar, QRIS dibuat dengan nominal terisi otomatis.' : 'Unggah gambar QRIS. Nanti siswa tinggal scan tanpa mengetik nominal.'}</p><div class="acts" style="flex-wrap:wrap"><button class="btn sm" data-act="qrisUp">${ic('plus')}${data.qris ? 'Ganti gambar QRIS' : 'Unggah gambar QRIS'}</button>${data.qris ? `<button class="btn sm warn" data-act="qrisDel">${ic('trash')}Hapus</button>` : ''}</div></div>
-  <div class="card">${c.students.length ? `<div class="rows">${list}</div>` : `<div class="empty">${ic('users', 'big')}<h3>Belum ada siswa</h3><p>Tempel daftar nama, satu nama per baris.</p><button class="btn" data-act="addStudents">${ic('plus')}Tambah siswa</button></div>`}</div>`;
+  <div class="card">${c.students.length ? `<div class="rows">${list}</div>` : `<div class="empty">${ic('users', 'big')}<h3>Belum ada siswa</h3><p>Tempel daftar nama, satu nama per baris.</p><button class="btn" data-act="addStudents">${ic('plus')}Tambah siswa</button></div>`}</div>
+  <div class="card" style="margin-top:16px">${memHtml(user.uid)}</div>`;
 }
 function vKeluar() {
   const k = calc(), l = k.pout.slice().sort((a, b) => b.date.localeCompare(a.date));
@@ -879,7 +880,7 @@ const ACT = {
       toast('Kode berhasil dimasukkan');
     }).catch(() => toast('Kode tidak ditemukan atau gagal terhubung'));
   }, 'Tambah'),
-  delCode: id => ask('Kode ini dilepas dari akunmu. Kamu tidak bisa lagi melihat kas bendahara ini sampai memasukkan kodenya lagi.', () => { fb.fs.collection('links').doc(user.uid).collection('admins').doc(id).delete().then(() => toast('Kode dilepas'), () => toast('Gagal melepas kode')); }, 'Lepas'),
+  delCode: id => ask('Kode ini dilepas dari akunmu. Kamu tidak bisa lagi melihat kas bendahara ini sampai memasukkan kodenya lagi.', () => { fb.fs.collection('members').doc(id).collection('siswa').doc(user.uid).delete().catch(() => {}); fb.fs.collection('links').doc(user.uid).collection('admins').doc(id).delete().then(() => toast('Kode dilepas'), () => toast('Gagal melepas kode')); }, 'Lepas'),
   addClass: () => modal('Kelas baru', classForm(), f => {
     const v = readClass(f); if (!v) return false;
     const c = { id: uid(), name: v.name, iuran: v.iuran, tipe: v.tipe, students: [] };
@@ -1529,6 +1530,7 @@ function watchLinks() {
     const ids = q.docs.map(d => d.id);
     ids.forEach(id => {
       if (SUBS[id]) return;
+      fb.fs.collection('members').doc(id).collection('siswa').doc(user.uid).set({ name: prof.uname || user.name || '', email: user.email || '', t: Date.now() }).catch(() => {}); watchMem(id);
       const a = fb.fs.collection('users').doc(id).onSnapshot(s => { OWN = OWN.filter(o => o.id !== id); if (s.exists && s.data().role === 'admin') OWN.push({ id, ...s.data() }); if (!RO) render(); }, () => {});
       const b = fb.fs.collection('kaskelas').doc(id).onSnapshot(s => {
         if (s.exists) { try { OWND[id] = { d: normalize(JSON.parse(s.data().json)), t: s.data().t }; } catch (e) {} } else delete OWND[id];
@@ -1537,17 +1539,25 @@ function watchLinks() {
       }, () => {});
       SUBS[id] = [a, b];
     });
-    Object.keys(SUBS).forEach(id => { if (!ids.includes(id)) { SUBS[id].forEach(u => u()); delete SUBS[id]; OWN = OWN.filter(o => o.id !== id); delete OWND[id]; if (RO === id) { RO = null; data = normalize(null); ui.page = 'admin'; } } });
+    Object.keys(SUBS).forEach(id => { if (!ids.includes(id)) { SUBS[id].forEach(u => u()); delete SUBS[id]; unwatchMem(id); OWN = OWN.filter(o => o.id !== id); delete OWND[id]; if (RO === id) { RO = null; data = normalize(null); ui.page = 'admin'; } } });
     render();
     if (!ids.length && !askedCode) { askedCode = true; ACT.addCode(); }
   }, () => toast('Gagal memuat kode kelas, cek aturan Firestore'));
 }
+let MEM = {}, MEMS = {};
+function watchMem(aid) { if (!fb || MEMS[aid]) return; MEMS[aid] = fb.fs.collection('members').doc(aid).collection('siswa').onSnapshot(q => { MEM[aid] = q.docs.map(d => ({ id: d.id, ...d.data() })); render(); }, () => {}); }
+function unwatchMem(aid) { if (MEMS[aid]) { MEMS[aid](); delete MEMS[aid]; } delete MEM[aid]; }
+const memName = m => m.name || String(m.email || m.id).split('@')[0];
+function memHtml(aid) { const L = (MEM[aid] || []).slice().sort((a, b) => memName(a).localeCompare(memName(b))); return `<p class="cap" style="margin:0 0 6px"><b>Siswa tersambung kode (${L.length}):</b></p>${L.length ? `<div class="chips" style="margin-bottom:8px">${L.map(m => `<span class="chip">${esc(memName(m))}</span>`).join('')}</div>` : '<p class="cap" style="margin:0 0 8px">Belum ada siswa yang memasukkan kode ini.</p>'}`; }
+const ownTxt = (x, D) => [unOf(x.id), x.email, ...D.classes.map(c => c.name)].join(' ').toLowerCase();
+const ownHide = t => { const q = ((ui && ui.q) || '').trim().toLowerCase(); return q && !t.includes(q) ? ' style="display:none"' : ''; };
+document.addEventListener('input', e => { if (e.target && e.target.id === 'ownQ') { ui.q = e.target.value; const q = ui.q.trim().toLowerCase(); document.querySelectorAll('[data-s]').forEach(el => { el.style.display = q && !el.dataset.s.includes(q) ? 'none' : ''; }); } });
 const unOf = id => UNM[id] || ((OWN.find(o => o.id === id) || {}).uname || '');
-function ownStop() { if (unsubU) unsubU(); if (unsubK) unsubK(); if (unsubN) unsubN(); unsubU = unsubK = unsubN = null; Object.keys(SUBS).forEach(k => { SUBS[k].forEach(u => u()); delete SUBS[k]; }); RO = null; OWND = {}; UNM = {}; SIS = []; }
+function ownStop() { if (unsubU) unsubU(); if (unsubK) unsubK(); if (unsubN) unsubN(); unsubU = unsubK = unsubN = null; Object.keys(SUBS).forEach(k => { SUBS[k].forEach(u => u()); delete SUBS[k]; }); RO = null; OWND = {}; UNM = {}; SIS = []; Object.keys(MEMS).forEach(unwatchMem); }
 function showOwner() {
   hideSplash(); ownStop();
   ui = { classId: null, period: 'w', ref: today(), page: 'admin' }; data = normalize(null);
-  if (isSw(prof)) watchLinks(); else unsubU = fb.fs.collection('users').onSnapshot(q => { OWN = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner' && !isSw(x)); SIS = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => isSw(x)); if (!RO) render(); }, () => toast('Gagal memuat pengguna, cek aturan Firestore'));
+  if (isSw(prof)) watchLinks(); else unsubU = fb.fs.collection('users').onSnapshot(q => { OWN = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner' && !isSw(x)); SIS = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => isSw(x)); OWN.forEach(x => watchMem(x.id)); if (!RO) render(); }, () => toast('Gagal memuat pengguna, cek aturan Firestore'));
   if (!isSw(prof)) unsubN = fb.fs.collection('usernames').onSnapshot(q => { UNM = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.uid) UNM[v.uid] = v.name || d.id; }); render(); }, () => {});
   if (!isSw(prof)) unsubK = fb.fs.collection('kaskelas').onSnapshot(q => {
     q.docs.forEach(d => { try { OWND[d.id] = { d: normalize(JSON.parse(d.data().json)), t: d.data().t }; } catch (e) {} });
@@ -1580,15 +1590,16 @@ function vAdmin() {
   const cards = OWN.map((x, i) => {
     const D = ownD(x.id), o = OWND[x.id], inn = sumA(D.payments), out = sumA(D.expenses), sw = D.classes.reduce((a, c) => a + c.students.length, 0);
     const cl = D.classes.map(c => { const a = sumA(D.payments.filter(p => p.classId === c.id)), b = sumA(D.expenses.filter(p => p.classId === c.id)); return `<div class="row"><div class="t"><b>${esc(c.name)}</b><small>${c.students.length} siswa, masuk ${fmt(a)}, keluar ${fmt(b)}</small></div><span class="amt in">${fmt(a - b)}</span>${isSw(prof) ? '' : `<button class="ib del" data-act="ownDelClass" data-id="${x.id}" data-cid="${c.id}" aria-label="Hapus kelas ${esc(c.name)}">${ic('trash')}</button>`}</div>`; }).join('');
-    return `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(unOf(x.id) || x.email || '?'))}</span><div class="t"><b>${esc(unOf(x.id) || x.email || x.id)}</b><small>${unOf(x.id) ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}${x.token && !isSw(prof) ? ' · Kode ' + esc(x.token) : ''}</small></div></div>
+    return `<div class="card" data-s="${esc(ownTxt(x, D))}"${ownHide(ownTxt(x, D))}><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(unOf(x.id) || x.email || '?'))}</span><div class="t"><b>${esc(unOf(x.id) || x.email || x.id)}</b><small>${unOf(x.id) ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}${x.token && !isSw(prof) ? ' · Kode ' + esc(x.token) : ''}</small></div></div>
+    <p class="cap" style="margin:0 0 8px"><b>Username:</b> ${unOf(x.id) ? esc(unOf(x.id)) : 'belum ada'}<br><b>Kelas:</b> ${D.classes.length ? esc(D.classes.map(c => c.name).join(', ')) : 'belum ada kelas'}</p>${memHtml(x.id)}
     <div class="own" style="margin:8px 0"><div class="stat"><span>Masuk</span><b>${fmt(inn)}</b></div><div class="stat"><span>Keluar</span><b>${fmt(out)}</b></div><div class="stat"><span>Saldo</span><b>${fmt(inn - out)}</b></div></div>
     <p class="cap" style="margin-bottom:6px">${D.classes.length} kelas, ${sw} siswa, ${D.payments.length + D.expenses.length} catatan. Aktivitas terakhir: ${o && o.t ? new Date(o.t).toLocaleString('id-ID') : 'belum ada'}</p>${cl ? `<div class="rows">${cl}</div>` : ''}
     <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button>${isSw(prof) ? `<button class="btn sm warn" data-act="delCode" data-id="${x.id}">Lepas kode</button>` : `<button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button>`}</div></div>`;
   }).join('');
-  const sis = isSw(prof) || !SIS.length ? '' : `<div class="hd" style="margin-top:24px"><div><h1 style="font-size:22px">Siswa</h1><p>${SIS.length} akun siswa, hanya bisa melihat</p></div></div><div class="ucards">${SIS.map((x, i) => `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(unOf(x.id) || x.email || '?'))}</span><div class="t"><b>${esc(unOf(x.id) || x.email || x.id)}</b><small>${unOf(x.id) ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div><div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button></div></div>`).join('')}</div>`;
+  const sis = isSw(prof) || !SIS.length ? '' : `<div class="hd" style="margin-top:24px"><div><h1 style="font-size:22px">Siswa</h1><p>${SIS.length} akun siswa, hanya bisa melihat</p></div></div><div class="ucards">${SIS.map((x, i) => `<div class="card" data-s="${esc((unOf(x.id) + ' ' + (x.email || '')).toLowerCase())}"${ownHide((unOf(x.id) + ' ' + (x.email || '')).toLowerCase())}><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(unOf(x.id) || x.email || '?'))}</span><div class="t"><b>${esc(unOf(x.id) || x.email || x.id)}</b><small>${unOf(x.id) ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div><div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button></div></div>`).join('')}</div>`;
   return `<div class="hd"><div><h1>${roleLbl(prof)}</h1><p>${isSw(prof) ? 'Kas bendahara dan sekretaris yang kodenya kamu masukkan' : 'Pantau semua bendahara, langsung saat ada perubahan'}</p></div>${isSw(prof) ? `<button class="btn" data-act="addCode">${ic('plus')}Masukkan kode</button>` : ''}</div>
   <section class="own"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat"><span>Total masuk</span><b>${fmt(tin)}</b></div><div class="stat"><span>Total saldo</span><b>${fmt(tin - tout)}</b></div></section>
-  ${OWN.length ? `<div class="ucards">${cards}</div>` : `<div class="card empty"><p>${isSw(prof) ? 'Belum ada kode. Minta kode ke bendahara atau sekretaris kelasmu, lalu masukkan.' : 'Belum ada bendahara yang mendaftar.'}</p>${isSw(prof) ? `<button class="btn" data-act="addCode">${ic('plus')}Masukkan kode</button>` : ''}</div>`}${sis}`;
+  ${OWN.length ? `<div class="f" style="margin-bottom:14px"><input id="ownQ" type="search" autocomplete="off" placeholder="Cari username, email, atau kelas" aria-label="Cari" value="${esc((ui && ui.q) || '')}"></div><div class="ucards">${cards}</div>` : `<div class="card empty"><p>${isSw(prof) ? 'Belum ada kode. Minta kode ke bendahara atau sekretaris kelasmu, lalu masukkan.' : 'Belum ada bendahara yang mendaftar.'}</p>${isSw(prof) ? `<button class="btn" data-act="addCode">${ic('plus')}Masukkan kode</button>` : ''}</div>`}${sis}`;
 }
 async function googleLogin() {
   if (!fb) return toast('Login Google belum aktif');
@@ -1612,7 +1623,7 @@ async function googleLogin() {
 }
 async function enter(s) {
   user = s; ui = { classId: null, period: 'w', ref: today(), page: 'home' };
-  if (fb && prof && prof.role !== 'owner' && !isSw(prof)) ensureToken();
+  if (fb && prof && prof.role !== 'owner' && !isSw(prof)) { ensureToken(); watchMem(user.uid); }
   await loadData(); render();
   if (localStorage.getItem('kk_dirty_' + user.uid)) sync();
   listen();
