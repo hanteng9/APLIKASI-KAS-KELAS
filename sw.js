@@ -1,9 +1,17 @@
-const V = 'kas-kelas-v2';
+const V = 'kas-kelas-v3';
 const CORE = ['./', 'index.html', 'config.js', 'manifest.json', 'icon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png'];
+const FB = 'https://www.gstatic.com/firebasejs/10.12.2/firebase-';
+const WARM = [FB + 'app-compat.js', FB + 'auth-compat.js', FB + 'firestore-compat.js',
+  'https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@500;600;700;800&display=swap'];
 const CDN = ['fonts.googleapis.com', 'fonts.gstatic.com', 'www.gstatic.com'];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(V).then(c => c.addAll(CORE)).then(() => self.skipWaiting()));
+  e.waitUntil(
+    caches.open(V).then(async c => {
+      await c.addAll(CORE);
+      await Promise.all(WARM.map(u => fetch(u, { mode: 'no-cors' }).then(r => c.put(u, r)).catch(() => {})));
+    }).then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener('activate', e => {
