@@ -672,7 +672,7 @@ function donut(k) {
 /* ---------- tampilan ---------- */
 const NAV = [['home', 'home', 'Beranda'], ['siswa', 'users', 'Siswa'], ['keluar', 'out', 'Pengeluaran'], ['riwayat', 'list', 'Riwayat'], ['ai', 'spark', 'AI']];
 function shell(view) {
-  const N = prof && prof.role === 'owner' ? (RO ? [['admin', 'users', 'Admin'], ...NAV.filter(x => x[0] !== 'ai')] : [['admin', 'users', 'Admin']]) : NAV;
+  const N = prof && (prof.role === 'owner' || isSw(prof)) ? (RO ? [['admin', 'users', 'Admin'], ...NAV.filter(x => x[0] !== 'ai')] : [['admin', 'users', 'Admin']]) : NAV;
   const nav = c => N.map(([id, i, l]) => c === 'b'
     ? `<button class="${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}" aria-label="${l}" title="${l}">${ic(i)}<span>${l}</span></button>`
     : `<button class="nav ${ui.page === id ? 'on' : ''}" data-act="go" data-id="${id}">${ic(i)}${l}</button>`).join('');
@@ -1272,6 +1272,7 @@ async function qrSvg(text) {
 }
 document.addEventListener('click', e => {
   const t = e.target.closest('[data-act]');
+  if (t && isSw(prof) && ['ownTog', 'ownPin', 'ownDel', 'ownDelClass'].includes(t.dataset.act)) return toast('Mode lihat saja');
   if (t && RO && ['pay', 'addClass', 'editClass', 'delClass', 'addStudents', 'addStudent', 'setTipe', 'qrisUp', 'qrisDel', 'editStudent', 'delStudent', 'delPay', 'addExp', 'delExp'].includes(t.dataset.act)) return toast('Mode lihat saja');
   if (t && ACT[t.dataset.act]) ACT[t.dataset.act](t.dataset.id, t);
 });
@@ -1404,6 +1405,7 @@ async function savePin(p) {
 }
 const cacheProf = () => { try { localStorage.setItem('kk_prof_' + user.uid, JSON.stringify(prof)); } catch (e) {} };
 const isOn = p => !!(p && (p.active || !p.off));
+const isSw = p => !!(p && String(p.role || '').toLowerCase() === 'siswa');
 async function gate(s) {
   user = s;
   let cp = null; try { cp = JSON.parse(localStorage.getItem('kk_prof_' + s.uid)); } catch (x) {}
@@ -1432,6 +1434,7 @@ async function gate(s) {
   unsubP = fb.fs.collection('users').doc(s.uid).onSnapshot(snap => {
     if (!snap.exists || !user || user.uid !== s.uid) return;
     const was = prof; prof = snap.data(); cacheProf();
+    if (isSw(was) !== isSw(prof)) return location.reload();
     if (prof.role !== 'owner' && !isOn(prof)) { if (isOn(was)) { if (unsub) { unsub(); unsub = null; } sessionStorage.removeItem('kk_pin_ok'); showPending(); } }
     else if (was.role !== 'owner' && !isOn(was)) gate(user);
   }, () => {});
@@ -1439,7 +1442,7 @@ async function gate(s) {
   if (sessionStorage.getItem('kk_pin_ok') === s.uid) return start();
   showPin();
 }
-const start = () => prof.role === 'owner' ? showOwner() : enter(user);
+const start = () => prof.role === 'owner' || isSw(prof) ? showOwner() : enter(user);
 function showPending() {
   hideSplash();
   $('#app').innerHTML = `<div class="auth" style="grid-template-columns:1fr"><section class="formside"><div class="acard c"><img class="logo" src="icon.svg" alt=""><h1>Menunggu aktivasi</h1><p class="sub">Akun ${esc(user.email || '')} sudah terdaftar. Pengelola aplikasi perlu mengaktifkannya dulu sebagai bendahara.</p><button class="btn block" data-act="recheck">Cek lagi</button><button class="btn warn block instl" data-act="logout">Keluar akun</button></div></section></div>`;
@@ -1489,7 +1492,7 @@ function ownStop() { if (unsubU) unsubU(); if (unsubK) unsubK(); if (unsubN) uns
 function showOwner() {
   hideSplash(); ownStop();
   ui = { classId: null, period: 'w', ref: today(), page: 'admin' }; data = normalize(null);
-  unsubU = fb.fs.collection('users').onSnapshot(q => { OWN = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner'); if (!RO) render(); }, () => toast('Gagal memuat pengguna, cek aturan Firestore'));
+  unsubU = (isSw(prof) ? fb.fs.collection('users').where('role', '==', 'admin') : fb.fs.collection('users')).onSnapshot(q => { OWN = q.docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner' && !isSw(x)); if (!RO) render(); }, () => toast('Gagal memuat pengguna, cek aturan Firestore'));
   unsubN = fb.fs.collection('usernames').onSnapshot(q => { UNM = {}; q.docs.forEach(d => { const v = d.data(); if (v && v.uid) UNM[v.uid] = v.name || d.id; }); render(); }, () => {});
   unsubK = fb.fs.collection('kaskelas').onSnapshot(q => {
     q.docs.forEach(d => { try { OWND[d.id] = { d: normalize(JSON.parse(d.data().json)), t: d.data().t }; } catch (e) {} });
@@ -1521,11 +1524,11 @@ function vAdmin() {
   const tin = all.reduce((a, D) => a + sumA(D.payments), 0), tout = all.reduce((a, D) => a + sumA(D.expenses), 0);
   const cards = OWN.map((x, i) => {
     const D = ownD(x.id), o = OWND[x.id], inn = sumA(D.payments), out = sumA(D.expenses), sw = D.classes.reduce((a, c) => a + c.students.length, 0);
-    const cl = D.classes.map(c => { const a = sumA(D.payments.filter(p => p.classId === c.id)), b = sumA(D.expenses.filter(p => p.classId === c.id)); return `<div class="row"><div class="t"><b>${esc(c.name)}</b><small>${c.students.length} siswa, masuk ${fmt(a)}, keluar ${fmt(b)}</small></div><span class="amt in">${fmt(a - b)}</span><button class="ib del" data-act="ownDelClass" data-id="${x.id}" data-cid="${c.id}" aria-label="Hapus kelas ${esc(c.name)}">${ic('trash')}</button></div>`; }).join('');
+    const cl = D.classes.map(c => { const a = sumA(D.payments.filter(p => p.classId === c.id)), b = sumA(D.expenses.filter(p => p.classId === c.id)); return `<div class="row"><div class="t"><b>${esc(c.name)}</b><small>${c.students.length} siswa, masuk ${fmt(a)}, keluar ${fmt(b)}</small></div><span class="amt in">${fmt(a - b)}</span>${isSw(prof) ? '' : `<button class="ib del" data-act="ownDelClass" data-id="${x.id}" data-cid="${c.id}" aria-label="Hapus kelas ${esc(c.name)}">${ic('trash')}</button>`}</div>`; }).join('');
     return `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(unOf(x.id) || x.email || '?'))}</span><div class="t"><b>${esc(unOf(x.id) || x.email || x.id)}</b><small>${unOf(x.id) ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div>
     <div class="own" style="margin:8px 0"><div class="stat"><span>Masuk</span><b>${fmt(inn)}</b></div><div class="stat"><span>Keluar</span><b>${fmt(out)}</b></div><div class="stat"><span>Saldo</span><b>${fmt(inn - out)}</b></div></div>
     <p class="cap" style="margin-bottom:6px">${D.classes.length} kelas, ${sw} siswa, ${D.payments.length + D.expenses.length} catatan. Aktivitas terakhir: ${o && o.t ? new Date(o.t).toLocaleString('id-ID') : 'belum ada'}</p>${cl ? `<div class="rows">${cl}</div>` : ''}
-    <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button><button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button></div></div>`;
+    <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button>${isSw(prof) ? '' : `<button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button>`}</div></div>`;
   }).join('');
   return `<div class="hd"><div><h1>Admin</h1><p>Pantau semua bendahara, langsung saat ada perubahan</p></div></div>
   <section class="own"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat"><span>Total masuk</span><b>${fmt(tin)}</b></div><div class="stat"><span>Total saldo</span><b>${fmt(tin - tout)}</b></div></section>
