@@ -325,7 +325,7 @@ const iso = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())
 const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
 const today = () => iso(new Date());
 const fotoOk = f => typeof f === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(f);
-const thumb = x => fotoOk(x.foto) ? `<img src="${x.foto}" alt="Struk" data-act="viewFoto" data-id="${x.id}" style="width:40px;height:40px;object-fit:cover;border-radius:10px;flex:none;cursor:pointer">` : '';
+const thumb = x => fotoOk(x.foto) ? `<img src="${x.foto}" alt="Struk" data-act="viewFoto" data-id="${x.id}" style="width:40px;height:40px;object-fit:cover;border-radius:10px;flex:none;cursor:pointer;margin:0 6px">` : '';
 let expFoto = '', expBusy = false;
 function packFoto(file) {
   return new Promise((ok, no) => {
@@ -842,7 +842,16 @@ const ACT = {
   },
   viewFoto: id => {
     const x = data.expenses.find(e => e.id === id); if (!x || !fotoOk(x.foto)) return;
-    modal('Foto struk', `<img src="${x.foto}" alt="Struk" style="width:100%;border-radius:12px">`, () => {}, 'Tutup');
+    modal('Foto struk', `<div style="padding:12px;border-radius:16px;background:rgba(0,0,0,.05);text-align:center"><img src="${x.foto}" alt="Struk" style="max-width:100%;max-height:60vh;object-fit:contain;border-radius:10px"></div><p class="cap" style="margin:10px 0 0;text-align:center">${esc(x.desc)}, ${dmy(x.date)}</p>`, () => {
+      const bin = atob(x.foto.split(',')[1]), u = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      const ext = x.foto.slice(11, x.foto.indexOf(';')).replace('jpeg', 'jpg');
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([u], { type: 'image/' + (ext === 'jpg' ? 'jpeg' : ext) }));
+      a.download = 'struk-' + x.date + '-' + String(x.desc || '').replace(/[^\w]+/g, '-').slice(0, 30) + '.' + ext;
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      toast('Foto diunduh');
+    }, 'Unduh');
+    const cb = $('#dlg [data-close]'); if (cb) cb.textContent = 'Tutup';
   },
   delExp: id => ask('Hapus catatan pengeluaran ini?', () => { data.expenses = data.expenses.filter(x => x.id !== id); save(); render(); toast('Catatan tersimpan'); }),
   expPdf: () => exportLap('pdf'),
