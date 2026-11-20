@@ -273,6 +273,7 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
   #gal .gf{bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.6))}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+html,body{scrollbar-width:none;-ms-overflow-style:none}html::-webkit-scrollbar,body::-webkit-scrollbar{display:none;width:0;height:0}
 
 
 /* tabel centang */
@@ -585,6 +586,11 @@ function lunasOn(sid, date) {
   const c = C(), pt = c.tipe || ui.period, need = c.iuran[pt], [pa, pb] = range(pt, date);
   const p = sumA(inR(data.payments.filter(x => x.classId === c.id && x.studentId === sid), pa, pb));
   return p > 0 && !(need > 0 && p < need);
+}
+function payRoom(sid, date) {
+  const c = C(), pt = c.tipe || ui.period, need = c.iuran[pt], [pa, pb] = range(pt, date);
+  if (!(need > 0)) return Infinity;
+  return need - sumA(inR(data.payments.filter(x => x.classId === c.id && x.studentId === sid), pa, pb));
 }
 function statusOf(k, sid) {
   const p = paidOf(k, sid), need = k.c.iuran[k.pt];
@@ -899,21 +905,27 @@ const ACT = {
     data.payments = data.payments.filter(x => x.studentId !== id);
     save(); render(); toast('Catatan tersimpan');
   }); },
-  pay: sid => {
-    const c = C();
+  pay: (sid, _t, dt0) => {
+    const c = C(), dt = dt0 || defDate();
     if (!c.students.length) { toast('Tambah siswa dulu di menu Siswa'); return; }
-    if (sid && lunasOn(sid, defDate())) { toast('Siswa ini sudah lunas untuk periode ini'); return; }
+    if (sid && lunasOn(sid, dt)) {
+      const pt = c.tipe || ui.period, nx = addDays(range(pt, dt)[1], 1);
+      ask('<b>' + esc(sname(c, sid)) + '</b> sudah lunas untuk ' + plabel(pt, dt) + '. Mau bayar untuk periode selanjutnya (' + plabel(pt, nx) + ')?', () => setTimeout(() => ACT.pay(sid, null, nx), 0), 'Ya, bayar');
+      return;
+    }
     const opts = c.students.map(s => `<option value="${s.id}" ${s.id === sid ? 'selected' : ''}>${s.no}. ${esc(s.name)}</option>`).join('');
     modal('Catat kas masuk',
       fld('Nama siswa', `<select name="sid">${opts}</select>`) +
       fld('Nominal (Rp)', `<input name="amt" type="text" inputmode="numeric" class="rp" required value="${fmtN(c.iuran[c.tipe || ui.period])}">`) +
-      fld('Tanggal', `<input name="date" type="date" required value="${defDate()}">`) +
+      fld('Tanggal', `<input name="date" type="date" required value="${dt}">`) +
       fld('Catatan (opsional)', '<input name="note" maxlength="60" placeholder="Contoh: bayar 2 minggu">') + '<button type="button" class="btn ghost block" id="qrisBtn">Bayar pakai QRIS</button>',
       f => {
         const amt = parseRp(f.get('amt'));
         if (!(amt > 0)) { toast('Nominal harus lebih dari 0'); return false; }
         if (!okDate(f.get('date'))) { toast('Tanggal tidak valid'); return false; }
-        if (lunasOn(f.get('sid'), f.get('date'))) { toast('Siswa ini sudah lunas untuk periode tersebut'); return false; }
+        if (lunasOn(f.get('sid'), f.get('date'))) { const s0 = f.get('sid'), d0 = f.get('date'); setTimeout(() => ACT.pay(s0, null, d0), 0); return; }
+        const rm = payRoom(f.get('sid'), f.get('date'));
+        if (amt > rm) { toast('Nominal melebihi iuran, maksimal ' + fmt(rm) + ' untuk periode ini'); return false; }
         data.payments.push({ id: uid(), classId: c.id, studentId: f.get('sid'), amount: amt, date: f.get('date'), note: f.get('note').trim() });
         save(); render(); toast('Catatan tersimpan');
       });
@@ -925,6 +937,7 @@ const ACT = {
     if (!(amt > 0)) return toast('Isi nominal dulu');
     if (!okDate(date)) return toast('Tanggal tidak valid');
     if (lunasOn(sid, date)) return toast('Siswa ini sudah lunas untuk periode tersebut');
+    if (amt > payRoom(sid, date)) return toast('Nominal melebihi iuran, maksimal ' + fmt(payRoom(sid, date)) + ' untuk periode ini');
     const p = qrisAmount(data.qris, amt); if (!p) return toast('QRIS tersimpan rusak, unggah ulang di menu Siswa');
     qrSvg(p).then(svg => { $('#dlg').close(); modal('Scan QRIS', `<div class="qrbox">${svg}</div><p class="msg" style="text-align:center;margin-bottom:4px"><b>${esc(sname(c, sid))}</b><br>${fmt(amt)}</p><p class="cap" style="text-align:center">${esc(qrisName(data.qris))}. Nominal sudah terisi, tinggal scan dan bayar.</p>`, () => {
       data.payments.push({ id: uid(), classId: c.id, studentId: sid, amount: amt, date, note: note ? note + ' (QRIS)' : 'QRIS' });
@@ -1268,7 +1281,7 @@ let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(() 
 /* ---------- pasang aplikasi ---------- */
 const standalone = () => matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone === true;
 function setInstallVisible() {
-  document.querySelectorAll('.install').forEach(b => { b.hidden = standalone(); });
+  document.querySelectorAll('.install').forEach(b => { b.hidden = standalone() || (!dip && !/iphone|ipad|ipod/i.test(navigator.userAgent)); });
 }
 addEventListener('beforeinstallprompt', e => { e.preventDefault(); dip = e; setInstallVisible(); });
 addEventListener('appinstalled', () => { dip = null; setInstallVisible(); toast('Aplikasi terpasang'); });
@@ -1413,6 +1426,7 @@ async function gate(s) {
     }
     if (!prof) { toast('Gagal memuat akun, cek koneksi internet' + (e && e.code ? ' (' + e.code + ')' : '')); await fb.auth.signOut(); user = null; return showAuth(); }
   }
+  if (s.displayName && prof.role !== 'owner' && prof.uname !== s.displayName) { prof.uname = s.displayName; cacheProf(); fb.fs.collection('users').doc(s.uid).update({ uname: s.displayName }).catch(() => {}); }
   if (unsubP) unsubP();
   unsubP = fb.fs.collection('users').doc(s.uid).onSnapshot(snap => {
     if (!snap.exists || !user || user.uid !== s.uid) return;
@@ -1469,6 +1483,7 @@ function forgotPin() {
   }, 'Lanjut');
 }
 let UNM = {}, unsubN = null;
+const unOf = id => UNM[id] || ((OWN.find(o => o.id === id) || {}).uname || '');
 function ownStop() { if (unsubU) unsubU(); if (unsubK) unsubK(); if (unsubN) unsubN(); unsubU = unsubK = unsubN = null; RO = null; OWND = {}; UNM = {}; }
 function showOwner() {
   hideSplash(); ownStop();
@@ -1486,11 +1501,11 @@ function showOwner() {
 const ownD = id => (OWND[id] || { d: normalize(null) }).d;
 function roBanner() {
   const x = OWN.find(u => u.id === RO) || {};
-  return `<div class="card" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div style="min-width:0"><b style="word-break:break-all">${esc(UNM[RO] ? UNM[RO] + ' (' + (x.email || RO) + ')' : x.email || RO)}</b><p class="cap" style="margin:0">Mode lihat saja, berubah langsung saat bendahara mencatat</p></div><div class="acts"><button class="btn sm ghost" data-act="ownCopy" data-id="${RO}">Salin data</button><button class="btn sm" data-act="ownBack">Kembali</button></div></div>`;
+  return `<div class="card" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap"><div style="min-width:0"><b style="word-break:break-all">${esc(unOf(RO) ? unOf(RO) + ' (' + (x.email || RO) + ')' : x.email || RO)}</b><p class="cap" style="margin:0">Mode lihat saja, berubah langsung saat bendahara mencatat</p></div><div class="acts"><button class="btn sm ghost" data-act="ownCopy" data-id="${RO}">Salin data</button><button class="btn sm" data-act="ownBack">Kembali</button></div></div>`;
 }
 function ownText(id) {
   const x = OWN.find(u => u.id === id) || {}, D = ownD(id);
-  let t = 'KAS KELAS - ' + (UNM[id] ? UNM[id] + ' - ' : '') + (x.email || id) + '\n';
+  let t = 'KAS KELAS - ' + (unOf(id) ? unOf(id) + ' - ' : '') + (x.email || id) + '\n';
   D.classes.forEach(c => {
     const P = D.payments.filter(p => p.classId === c.id), E = D.expenses.filter(p => p.classId === c.id);
     t += `\nKelas ${c.name}: masuk ${fmt(sumA(P))}, keluar ${fmt(sumA(E))}, saldo ${fmt(sumA(P) - sumA(E))}\nSiswa:\n`;
@@ -1506,7 +1521,7 @@ function vAdmin() {
   const cards = OWN.map((x, i) => {
     const D = ownD(x.id), o = OWND[x.id], inn = sumA(D.payments), out = sumA(D.expenses), sw = D.classes.reduce((a, c) => a + c.students.length, 0);
     const cl = D.classes.map(c => { const a = sumA(D.payments.filter(p => p.classId === c.id)), b = sumA(D.expenses.filter(p => p.classId === c.id)); return `<div class="row"><div class="t"><b>${esc(c.name)}</b><small>${c.students.length} siswa, masuk ${fmt(a)}, keluar ${fmt(b)}</small></div><span class="amt in">${fmt(a - b)}</span><button class="ib del" data-act="ownDelClass" data-id="${x.id}" data-cid="${c.id}" aria-label="Hapus kelas ${esc(c.name)}">${ic('trash')}</button></div>`; }).join('');
-    return `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(UNM[x.id] || x.email || '?'))}</span><div class="t"><b>${esc(UNM[x.id] || x.email || x.id)}</b><small>${UNM[x.id] ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div>
+    return `<div class="card"><div class="row s" style="border:0;padding-top:0"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(unOf(x.id) || x.email || '?'))}</span><div class="t"><b>${esc(unOf(x.id) || x.email || x.id)}</b><small>${unOf(x.id) ? '<span style="word-break:break-all">' + esc(x.email || '') + '</span><br>' : ''}<span class="chip ${isOn(x) ? 'ok' : 'mid'}">${isOn(x) ? 'Aktif' : 'Nonaktif'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div></div>
     <div class="own" style="margin:8px 0"><div class="stat"><span>Masuk</span><b>${fmt(inn)}</b></div><div class="stat"><span>Keluar</span><b>${fmt(out)}</b></div><div class="stat"><span>Saldo</span><b>${fmt(inn - out)}</b></div></div>
     <p class="cap" style="margin-bottom:6px">${D.classes.length} kelas, ${sw} siswa, ${D.payments.length + D.expenses.length} catatan. Aktivitas terakhir: ${o && o.t ? new Date(o.t).toLocaleString('id-ID') : 'belum ada'}</p>${cl ? `<div class="rows">${cl}</div>` : ''}
     <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button><button class="btn sm ${isOn(x) ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${isOn(x) ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button><button class="btn sm warn" data-act="ownDel" data-id="${x.id}">${ic('trash')}Hapus akun</button></div></div>`;
