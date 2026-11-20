@@ -404,10 +404,10 @@ function dlFoto(u, x) {
 function openGal(list, i) {
   const old = $('#gal'); if (old) old.remove();
   const g = document.createElement('div'); g.id = 'gal';
-  g.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(8,12,20,.97);display:flex;flex-direction:column;color:#fff';
-  g.innerHTML = `<div style="display:flex;align-items:center;gap:8px;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 12px"><div id="galT" style="flex:1;min-width:0"></div><button type="button" class="btn sm" id="galD">${ic('dl')}Unduh</button><button type="button" class="btn sm ghost" id="galX">Tutup</button></div>
-  <div id="galS" style="flex:1;min-height:0;overflow:auto;display:flex;touch-action:pan-x pan-y"><img id="galI" alt="Struk" style="display:none"><div id="galM" style="margin:auto;font-weight:700"></div></div>
-  <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px))"><button type="button" class="btn sm ghost" id="galP" aria-label="Sebelumnya">${ic('l')}</button><span id="galN" style="font-weight:700"></span><button type="button" class="btn sm ghost" id="galQ" aria-label="Berikutnya">${ic('r')}</button></div>`;
+  g.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(8,12,20,.97);display:flex;flex-direction:column;color:#fff;overflow:hidden';
+  g.innerHTML = `<div id="galB" style="position:absolute;inset:0;z-index:0;background:center/cover no-repeat;filter:blur(28px) brightness(.45);transform:scale(1.2)"></div><div style="position:relative;z-index:1;display:flex;align-items:center;gap:8px;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 12px"><div id="galT" style="flex:1;min-width:0"></div><button type="button" class="btn sm" id="galD">${ic('dl')}Unduh</button><button type="button" class="btn sm ghost" id="galX">Tutup</button></div>
+  <div id="galS" style="position:relative;z-index:1;flex:1;min-height:0;overflow:auto;display:flex;touch-action:pan-x pan-y"><img id="galI" alt="Struk" style="display:none"><div id="galM" style="margin:auto;font-weight:700"></div></div>
+  <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;gap:14px;padding:12px 14px calc(14px + env(safe-area-inset-bottom,0px))"><button type="button" class="btn sm ghost" id="galP" aria-label="Sebelumnya">${ic('l')}</button><span id="galN" style="font-weight:700"></span><button type="button" class="btn sm ghost" id="galQ" aria-label="Berikutnya">${ic('r')}</button></div>`;
   document.body.appendChild(g);
   const prevOv = document.body.style.overflow; document.body.style.overflow = 'hidden';
   let cur = i, zoom = false, url = '', tx = null;
@@ -416,7 +416,7 @@ function openGal(list, i) {
     const mob = $('#galS').clientWidth < 700;
     im.style.cssText = zoom
       ? (mob ? 'margin:auto;max-width:none;max-height:none;width:300%;height:auto;flex:none;display:block;cursor:zoom-out' : 'margin:auto;max-width:none;max-height:none;width:auto;height:auto;flex:none;display:block;cursor:zoom-out')
-      : (mob ? 'margin:auto;max-width:none;max-height:none;width:100%;height:auto;flex:none;display:block;cursor:zoom-in' : 'margin:auto;max-width:100%;max-height:100%;object-fit:contain;display:block;cursor:zoom-in');
+      : 'margin:auto;max-width:100%;max-height:100%;object-fit:contain;display:block;cursor:zoom-in';
   };
   const close = () => { g.remove(); document.body.style.overflow = prevOv; document.removeEventListener('keydown', key); };
   const key = e => { if (e.key === 'Escape') close(); else if (e.key === 'ArrowLeft') go(-1); else if (e.key === 'ArrowRight') go(1); };
@@ -424,8 +424,8 @@ function openGal(list, i) {
     const x = list[cur], my = cur; zoom = false; url = '';
     $('#galT').innerHTML = `<b style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(x.desc)}</b><small style="opacity:.75">${dmy(x.date)}, ${fmt(x.amount)}</small>`;
     $('#galN').textContent = (cur + 1) + ' / ' + n;
-    const m = $('#galM'); im.style.display = 'none'; m.textContent = 'Memuat foto...';
-    try { const u = await fotoGet(x); if (my !== cur || !$('#gal')) return; url = u; im.src = u; fit(); m.textContent = ''; }
+    const m = $('#galM'); im.style.display = 'none'; m.textContent = 'Memuat foto...'; $('#galB').style.backgroundImage = 'none';
+    try { const u = await fotoGet(x); if (my !== cur || !$('#gal')) return; url = u; im.src = u; $('#galB').style.backgroundImage = 'url("' + u + '")'; fit(); m.textContent = ''; }
     catch (e) { if (my === cur && $('#gal')) m.textContent = e && e.code === 'permission-denied' ? 'Akun ini belum diizinkan membaca foto. Perbarui aturan Firestore untuk koleksi foto.' : 'Foto tidak bisa dimuat. Cek koneksi internet.'; }
   }
   const go = d => { if (n < 2) return; cur = (cur + d + n) % n; show(); };
