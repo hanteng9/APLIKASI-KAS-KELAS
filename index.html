@@ -204,12 +204,10 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .acard.c{text-align:center}.acard.c .logo{display:block;margin:0 auto}
 .own{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
 .own .stat{padding:14px}.own .stat b{font-size:24px}
-.adm .stat{padding:20px}.adm .stat b{font-size:28px}.adm .stat small{max-width:75%;overflow-wrap:anywhere}
-@media(max-width:900px){.adm{grid-template-columns:minmax(0,1fr)}}
 .bnav.five button{font-size:10px}
 .ro [data-act=pay]:not(.pill),.ro [data-act=addClass],.ro [data-act=editClass],.ro [data-act=delClass],.ro [data-act=addStudents],.ro [data-act=editStudent],.ro [data-act=delStudent],.ro [data-act=delPay],.ro [data-act=addExp],.ro [data-act=delExp]{display:none!important}
 .ro .pill{pointer-events:none}
-.ro [data-act=addStudent],.ro [data-act=setTipe],.ro [data-act=qrisUp],.ro [data-act=qrisDel]{display:none!important}
+.ro [data-act=restore],.ro [data-act=addStudent],.ro [data-act=setTipe],.ro [data-act=qrisUp],.ro [data-act=qrisDel]{display:none!important}
 .pn1,.pn2{display:flex;align-items:center;gap:4px}
 .pn1{flex:1;min-width:0}
 .stat>*{position:relative;z-index:1}
@@ -227,7 +225,7 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
   .stat.hero small{max-width:75%;overflow-wrap:anywhere}
 }
 .rdate{min-height:36px;padding:0 10px;border:0;border-radius:999px;background:var(--tealL);color:var(--tealD);font-weight:800;font-size:13px;max-width:150px}
-.ucards{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:14px}
+.ucards{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
 @media(max-width:600px){
   .own .stat b{font-size:15px;word-break:break-word}
   .row.s{flex-wrap:wrap}.row.s .t{flex:1 1 0;min-width:0}
@@ -617,7 +615,7 @@ function vRiwayat() {
   const rows = l.map(x => x.t === 'in'
     ? `<div class="row"><span class="ico" style="background:var(--teal)">${ic('plus')}</span><div class="t"><b>${esc(sname(k.c, x.studentId))}</b><small>${dmy(x.date)}${x.note ? ', ' + esc(x.note) : ''}</small></div><span class="amt in">+ ${fmt(x.amount)}</span><button class="ib del" data-act="delPay" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div>`
     : `<div class="row"><span class="ico" style="background:${CATS[x.cat] || CATS.Lainnya}">${ic('cash')}</span><div class="t"><b>${esc(x.desc)}</b><small>${dmy(x.date)}, ${esc(x.cat)}</small></div><span class="amt out">- ${fmt(x.amount)}</span><button class="ib del" data-act="delExp" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div>`).join('');
-  return `<div class="hd"><div><h1>Riwayat</h1><p>${all ? 'Total masuk ' + fmt(sumA(k.allIn)) + ', keluar ' + fmt(sumA(k.allOut)) + ', saldo ' + fmt(k.saldo) : 'Masuk ' + fmt(k.inSum) + ', keluar ' + fmt(k.outSum)}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-act="expPdf">${ic('dl')}PDF</button><button class="btn ghost" data-act="expXls">${ic('dl')}Excel</button><button class="btn" data-act="pay">${ic('plus')}Catat kas masuk</button></div></div>${toolbar()}
+  return `<div class="hd"><div><h1>Riwayat</h1><p>${all ? 'Total masuk ' + fmt(sumA(k.allIn)) + ', keluar ' + fmt(sumA(k.allOut)) + ', saldo ' + fmt(k.saldo) : 'Masuk ' + fmt(k.inSum) + ', keluar ' + fmt(k.outSum)}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-act="backup">${ic('dl')}Backup</button><button class="btn ghost" data-act="restore"><span style="display:inline-flex;transform:rotate(180deg)">${ic('dl')}</span>Pulihkan</button><button class="btn ghost" data-act="expPdf">${ic('dl')}PDF</button><button class="btn ghost" data-act="expXls">${ic('dl')}Excel</button><button class="btn" data-act="pay">${ic('plus')}Catat kas masuk</button></div></div>${toolbar()}
   ${vTbl(k)}<div class="card">${l.length ? `<div class="rows">${rows}</div>` : `<div class="empty">${ic('list', 'big')}<h3>Belum ada catatan</h3><p>Catatan kas masuk dan keluar periode ini muncul di sini.</p></div>`}</div>`;
 }
 function render() {
@@ -789,7 +787,33 @@ const ACT = {
   },
   delExp: id => ask('Hapus catatan pengeluaran ini?', () => { data.expenses = data.expenses.filter(x => x.id !== id); save(); render(); toast('Catatan tersimpan'); }),
   expPdf: () => exportLap('pdf'),
-  expXls: () => exportLap('xls')
+  expXls: () => exportLap('xls'),
+  backup: () => {
+    const b = new Blob([JSON.stringify({ app: 'kaskelas', v: 1, t: Date.now(), data })], { type: 'application/json' });
+    const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'kas-kelas-backup-' + today() + '.json';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast('Backup diunduh');
+  },
+  restore: () => {
+    if (RO) return;
+    const i = document.createElement('input'); i.type = 'file'; i.accept = '.json,application/json';
+    i.onchange = () => {
+      const f = i.files && i.files[0]; if (!f) return;
+      const r = new FileReader();
+      r.onerror = () => toast('Gagal membaca file backup');
+      r.onload = () => {
+        let o = null; try { o = JSON.parse(r.result); } catch (e) {}
+        const d = o && o.app === 'kaskelas' && o.data ? o.data : o;
+        if (!d || typeof d !== 'object' || !Array.isArray(d.classes) || !Array.isArray(d.payments) || !Array.isArray(d.expenses)) return toast('File backup tidak valid');
+        const nd = normalize(d);
+        ask('Data sekarang akan diganti dengan isi backup (' + nd.classes.length + ' kelas, ' + (nd.payments.length + nd.expenses.length) + ' catatan). Lanjutkan?', () => {
+          data = nd; ui.classId = null; save(); render(); toast('Data berhasil dipulihkan');
+        }, 'Pulihkan');
+      };
+      r.readAsText(f);
+    };
+    i.click();
+  }
 };
 /* ---------- ekspor PDF dan Excel ---------- */
 const libP = {};
@@ -1076,7 +1100,7 @@ function errMsg(e) {
     'auth/invalid-credential': 'Email atau password salah', 'auth/wrong-password': 'Email atau password salah', 'auth/user-not-found': 'Email belum terdaftar',
     'auth/email-already-in-use': 'Email sudah terdaftar, silakan masuk', 'auth/weak-password': 'Password minimal 6 karakter',
     'auth/invalid-email': 'Format email tidak valid', 'auth/network-request-failed': 'Tidak ada koneksi internet',
-    'auth/too-many-requests': 'Terlalu banyak percobaan, coba lagi nanti', 'dup': 'Email sudah terdaftar, silakan masuk', 'bad': 'Email atau password salah'
+    'auth/too-many-requests': 'Terlalu banyak percobaan, coba lagi nanti', 'nouser': 'Username tidak ditemukan, coba masuk dengan email', 'undup': 'Username sudah dipakai', 'dup': 'Email sudah terdaftar, silakan masuk', 'bad': 'Email atau password salah'
   };
   return m[e && e.code] || (e && e.message) || 'Terjadi kesalahan';
 }
@@ -1087,7 +1111,9 @@ function showAuth() {
   <section class="formside"><div class="acard"><img class="logo" src="icon.svg" alt="Logo Kas Kelas"><h1>${up ? 'Buat akun' : 'Selamat datang'}</h1><p class="sub">${up ? 'Daftar untuk mulai mencatat kas kelas.' : 'Masuk untuk membuka kas kelasmu.'}</p>
     <div class="tabs" role="tablist"><button class="${up ? '' : 'on'}" data-m="in" type="button">Masuk</button><button class="${up ? 'on' : ''}" data-m="up" type="button">Daftar</button></div>
     <form id="af" novalidate>
-      <div class="f"><label for="em">Email</label><input id="em" type="email" autocomplete="email" inputmode="email" placeholder="nama@gmail.com" required></div>
+      <div class="f"><label for="un">Username</label><input id="un" type="text" autocomplete="username" maxlength="20" placeholder="${up ? '3-20 huruf, angka, titik, garis bawah' : 'username kamu'}"${up ? ' required' : ''}></div>
+      <div class="f"><label for="em">Email</label><input id="em" type="email" autocomplete="email" inputmode="email" placeholder="nama@gmail.com"${up ? ' required' : ''}></div>
+      ${up ? '' : '<p class="cap" style="margin:-6px 0 12px;font-size:13px">Isi salah satu: username atau email</p>'}
       <div class="f"><label for="pw">Password</label><div class="pw"><input id="pw" type="password" autocomplete="${up ? 'new-password' : 'current-password'}" minlength="6" placeholder="Minimal 6 karakter" required><button type="button" id="seepw">Lihat</button></div></div>
       ${up ? '' : '<button type="button" class="lnk" id="fpw">Lupa password?</button>'}
       <button class="btn block" id="abtn">${up ? 'Daftar' : 'Masuk'}</button>
@@ -1104,21 +1130,40 @@ function showAuth() {
   $('#gbtn').onclick = googleLogin;
   const sp = $('#splash'); if (sp) sp.remove();
 }
+async function uname2em(u) {
+  if (fb) {
+    let d = null; try { d = await fb.fs.collection('usernames').doc(u).get(); } catch (e) {}
+    if (d && d.exists && d.data().email) return d.data().email;
+    throw { code: 'nouser' };
+  }
+  const N = JSON.parse(localStorage.getItem('kk_unames') || '{}');
+  if (N[u]) return N[u];
+  throw { code: 'nouser' };
+}
 async function submitAuth(e) {
   e.preventDefault();
-  const em = $('#em').value.trim().toLowerCase(), pw = $('#pw').value, btn = $('#abtn');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return toast('Format email tidak valid');
+  let em = $('#em').value.trim().toLowerCase(); const pw = $('#pw').value, btn = $('#abtn');
+  const unEl = $('#un'), un = unEl ? unEl.value.trim().toLowerCase() : '';
+  if (mode === 'up' && !/^[a-z0-9._]{3,20}$/.test(un)) return toast('Username 3-20 karakter: huruf, angka, titik, garis bawah');
   if (pw.length < 6) return toast('Password minimal 6 karakter');
   btn.disabled = true; btn.textContent = 'Memproses...';
   try {
+    if (mode === 'in' && !em) { if (!un) throw { code: 'bad' }; em = await uname2em(un); }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) throw { code: 'auth/invalid-email' };
     if (fb) {
       if (mode === 'in') await fb.auth.signInWithEmailAndPassword(em, pw);
-      else await fb.auth.createUserWithEmailAndPassword(em, pw);
+      else {
+        let tk = false; try { tk = (await fb.fs.collection('usernames').doc(un).get()).exists; } catch (x) {}
+        if (tk) throw { code: 'undup' };
+        const cr = await fb.auth.createUserWithEmailAndPassword(em, pw);
+        try { await cr.user.updateProfile({ displayName: un }); if (user && user.uid === cr.user.uid) user.name = un; } catch (x) {}
+        try { await fb.fs.collection('usernames').doc(un).set({ email: em, uid: cr.user.uid }); } catch (x) {}
+      }
     } else {
-      const U = JSON.parse(localStorage.getItem('kk_users') || '{}'), h = await hash(pw);
-      if (mode === 'up') { if (U[em]) throw { code: 'dup' }; U[em] = h; localStorage.setItem('kk_users', JSON.stringify(U)); }
+      const U = JSON.parse(localStorage.getItem('kk_users') || '{}'), N = JSON.parse(localStorage.getItem('kk_unames') || '{}'), h = await hash(pw);
+      if (mode === 'up') { if (U[em]) throw { code: 'dup' }; if (N[un]) throw { code: 'undup' }; U[em] = h; N[un] = em; localStorage.setItem('kk_users', JSON.stringify(U)); localStorage.setItem('kk_unames', JSON.stringify(N)); }
       else if (U[em] !== h) throw { code: 'bad' };
-      const s = { uid: 'l_' + (await hash(em)).slice(0, 16), email: em, name: em.split('@')[0] };
+      const s = { uid: 'l_' + (await hash(em)).slice(0, 16), email: em, name: mode === 'up' ? un : (Object.keys(N).find(k => N[k] === em) || em.split('@')[0]) };
       localStorage.setItem('kk_session' + KS, JSON.stringify(s));
       await enter(s);
     }
@@ -1126,9 +1171,10 @@ async function submitAuth(e) {
   const b2 = $('#abtn'); if (b2) { b2.disabled = false; b2.textContent = mode === 'up' ? 'Daftar' : 'Masuk'; }
 }
 async function forgot() {
-  const em = $('#em').value.trim().toLowerCase();
+  let em = $('#em').value.trim().toLowerCase();
   if (!fb) return toast('Fitur ini butuh Firebase aktif');
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return toast('Isi email dulu di kolom Email');
+  if (!em) { const u = $('#un').value.trim().toLowerCase(); if (u) { try { em = await uname2em(u); } catch (e) { return toast(errMsg(e)); } } }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) return toast('Isi username atau email dulu');
   try { await fb.auth.sendPasswordResetEmail(em); toast('Link reset password dikirim ke ' + em + '. Cek inbox atau spam'); } catch (e) { toast(errMsg(e)); }
 }
 
@@ -1254,7 +1300,7 @@ function vAdmin() {
     <div class="acts" style="flex-wrap:wrap;margin-top:12px"><button class="btn sm" data-act="ownView" data-id="${x.id}">Lihat detail</button><button class="btn sm ghost" data-act="ownCopy" data-id="${x.id}">Salin data</button><button class="btn sm ${x.active ? 'warn' : 'ghost'}" data-act="ownTog" data-id="${x.id}">${x.active ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button></div></div>`;
   }).join('');
   return `<div class="hd"><div><h1>Admin</h1><p>Pantau semua bendahara, langsung saat ada perubahan</p></div></div>
-  <section class="own adm"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat hero"><span>Total masuk</span><b>${fmt(tin)}</b><small>dari semua bendahara</small></div><div class="stat hero"><span>Total saldo</span><b>${fmt(tin - tout)}</b><small>masuk dikurangi keluar</small></div></section>
+  <section class="own"><div class="stat hero"><span>Bendahara</span><b>${on} / ${OWN.length}</b><small>aktif</small></div><div class="stat"><span>Total masuk</span><b>${fmt(tin)}</b></div><div class="stat"><span>Total saldo</span><b>${fmt(tin - tout)}</b></div></section>
   ${OWN.length ? `<div class="ucards">${cards}</div>` : '<div class="card empty"><p>Belum ada bendahara yang mendaftar.</p></div>'}`;
 }
 async function googleLogin() {
@@ -1419,7 +1465,7 @@ ${aiContext()}`;
       }
       await new Promise(res => setTimeout(res, Math.min(400 * Math.pow(2, attempt) + (lastKind === 'limit' ? 1200 : 0), 4000)));
     }
-    if (lastErr) { const er = new Error(aiErrInfo(lastKind) + (lastKind === 'auth' ? ' [' + String(lastErr).slice(0, 160) + ']' : '')); er.kind = lastKind; er.retry = retry; throw er; }
+    if (lastErr) { const er = new Error(aiErrInfo(lastKind)); er.kind = lastKind; er.retry = retry; throw er; }
     const txt = (j.candidates[0].content.parts || []).map(p => p.text || '').join('').trim() || 'Hmm, aku lagi nggak bisa jawab nih, coba tanya lagi ya.';
     if (!alive()) return;
     aiHist.push({ role: 'model', parts: [{ text: txt }] });
