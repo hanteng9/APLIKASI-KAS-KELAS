@@ -579,6 +579,17 @@ const ACT = {
     try { await fb.fs.collection('users').doc(id).update({ pinHash: null }); toast('PIN direset'); } catch (e) { toast('Gagal reset PIN'); }
     showOwner();
   }, 'Reset'),
+  ownView: async id => {
+    const x = OWN.find(u => u.id === id);
+    try {
+      const d = await fb.fs.collection('kaskelas').doc(id).get(), D = normalize(d.exists ? JSON.parse(d.data().json) : null);
+      let h = D.classes.map(c => { const i = sumA(D.payments.filter(p => p.classId === c.id)), o = sumA(D.expenses.filter(p => p.classId === c.id)); return `<div class="row"><div class="t"><b>${esc(c.name)}</b><small>${c.students.length} siswa, masuk ${fmt(i)}, keluar ${fmt(o)}</small></div><span class="amt in">${fmt(i - o)}</span></div>`; }).join('');
+      const nm = p => { const c = D.classes.find(k => k.id === p.classId); return c ? sname(c, p.studentId) : '-'; };
+      const L = [...D.payments.map(p => ({ ...p, t: 'in' })), ...D.expenses.map(p => ({ ...p, t: 'out' }))].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
+      h += '<p class="cap" style="margin:12px 0 4px">Aktivitas terakhir</p>' + L.map(p => `<div class="row"><div class="t"><b>${p.t === 'in' ? esc(nm(p)) : esc(p.desc)}</b><small>${dmy(p.date)}</small></div><span class="amt ${p.t}">${p.t === 'in' ? '+ ' : '- '}${fmt(p.amount)}</span></div>`).join('');
+      modal(esc(x.email || ''), D.classes.length ? h : '<p class="msg">Belum ada data.</p>', () => {}, 'Tutup');
+    } catch (e) { toast('Gagal memuat data'); }
+  },
   recheck: () => gate(user),
   addClass: () => modal('Kelas baru', classForm(), f => {
     const v = readClass(f); if (!v) return false;
@@ -743,6 +754,7 @@ async function forgot() {
 
 /* ---------- profil, PIN, peran (disimpan di database) ---------- */
 let prof = null, OWN = [];
+const OWNER_MAILS = ['huyrehan@gmail.com'];
 const pinH = p => hash(user.uid + ':kk:' + p);
 const hideSplash = () => { const sp = $('#splash'); if (sp) sp.remove(); };
 async function savePin(p) {
@@ -755,8 +767,9 @@ async function gate(s) {
   user = s;
   try {
     const ref = fb.fs.collection('users').doc(s.uid), d = await ref.get();
-    if (d.exists) prof = d.data();
-    else { prof = { email: s.email || '', role: 'admin', active: false, pinHash: null, createdAt: Date.now() }; await ref.set(prof); }
+    const om = OWNER_MAILS.includes((s.email || '').toLowerCase());
+    if (d.exists) { prof = d.data(); if (om && prof.role !== 'owner') { prof.role = 'owner'; prof.active = true; await ref.update({ role: 'owner', active: true }); } }
+    else { prof = { email: s.email || '', role: om ? 'owner' : 'admin', active: om, pinHash: null, createdAt: Date.now() }; await ref.set(prof); }
     cacheProf();
   } catch (e) {
     try { prof = JSON.parse(localStorage.getItem('kk_prof_' + s.uid)); } catch (x) {}
@@ -815,7 +828,7 @@ async function showOwner() {
   $('#app').innerHTML = '<main class="main" style="margin:auto"><p class="msg">Memuat...</p></main>';
   try { OWN = (await fb.fs.collection('users').get()).docs.map(d => ({ id: d.id, ...d.data() })).filter(x => x.role !== 'owner'); } catch (e) { toast('Gagal memuat pengguna'); }
   const on = OWN.filter(x => x.active).length;
-  const rows = OWN.map((x, i) => `<div class="row s"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(x.email || '?'))}</span><div class="t"><b>${esc(x.email || x.id)}</b><small><span class="chip ${x.active ? 'ok' : 'mid'}">${x.active ? 'Aktif' : 'Menunggu'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div><div class="acts"><button class="btn sm ${x.active ? 'warn' : ''}" data-act="ownTog" data-id="${x.id}">${x.active ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button></div></div>`).join('');
+  const rows = OWN.map((x, i) => `<div class="row s"><span class="av" style="background:${AVC[i % AVC.length]}">${esc(initials(x.email || '?'))}</span><div class="t"><b>${esc(x.email || x.id)}</b><small><span class="chip ${x.active ? 'ok' : 'mid'}">${x.active ? 'Aktif' : 'Menunggu'}</span> ${x.pinHash ? 'PIN sudah dibuat' : 'PIN belum dibuat'}</small></div><div class="acts"><button class="btn sm ghost" data-act="ownView" data-id="${x.id}">Lihat</button><button class="btn sm ${x.active ? 'warn' : ''}" data-act="ownTog" data-id="${x.id}">${x.active ? 'Nonaktifkan' : 'Aktifkan'}</button><button class="btn sm ghost" data-act="ownPin" data-id="${x.id}">Reset PIN</button></div></div>`).join('');
   $('#app').innerHTML = `<main class="main" style="margin:auto"><div class="hd"><div><h1>Dashboard Pengelola</h1><p>${esc(user.email || '')}</p></div><div class="acts"><button class="btn sm ghost" data-act="chpin">${ic('key')}Ganti PIN</button><button class="btn sm warn" data-act="logout">${ic('out')}Keluar</button></div></div>
   <section class="own"><div class="stat hero"><span>Bendahara</span><b>${OWN.length}</b></div><div class="stat"><span>Aktif</span><b>${on}</b></div><div class="stat"><span>Menunggu</span><b>${OWN.length - on}</b></div></section>
   <div class="card"><h3>Akun bendahara</h3><p class="cap">Aktifkan akun baru agar bisa memakai aplikasi.</p>${OWN.length ? `<div class="rows">${rows}</div>` : '<div class="empty"><p>Belum ada bendahara yang mendaftar.</p></div>'}</div></main>`;
