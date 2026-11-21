@@ -953,7 +953,7 @@ function vTbl(k) {
   const notes = c.students.slice().sort((a, b) => (a.no || 0) - (b.no || 0)).map(st => {
     const L = pays.filter(x => x.studentId === st.id).sort((a, b) => String(a.date).localeCompare(String(b.date)) || (a.ts || 0) - (b.ts || 0));
     if (!L.length) return '';
-    return `<div class="tnh"><b>${st.no || ''}</b><span>${esc(st.name)}</span><em>${esc(fmt(sumA(L)))}</em></div>${L.map(x => `<div class="tnr"><div><b>${dmy(x.date)}${x.ts ? ' · ' + tm(x.ts) : ''}</b><small>${x.note ? esc(x.note) : 'Tanpa catatan'}</small></div><span>+ ${fmt(x.amount)}</span></div>`).join('')}`;
+    return `<div class="tnh"><b>${st.no || ''}</b><span>${esc(st.name)}</span><em>${esc(fmt(sumA(L)))}</em></div>${L.map(x => `<div class="tnr"><div><b>${dmy(x.date)}${x.ts ? ' · ' + tm(x.ts) : ''}</b><small>${x.note ? esc(x.note) : 'Tanpa catatan'}</small></div><span>+ ${fmt(x.amount)}</span><button class="ib del" data-act="delPay" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div>`).join('')}`;
   }).join('');
   const head = wk.map((w, j) => `<th>M${j + 1}<small>${parse(w.a).getDate()}–${parse(w.b).getDate()}</small></th>`).join('');
   const foot = colN.map(v => `<td>${v > 0 ? v : '–'}</td>`).join('');
