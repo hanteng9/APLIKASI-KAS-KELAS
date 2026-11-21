@@ -4,7 +4,7 @@
   "short_name": "Kas Kelas",
   "description": "Catat iuran, pantau saldo, dan transparansi kas kelas.",
   "lang": "id",
-  "dir": "ltr", 
+  "dir": "ltr",
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
@@ -13,8 +13,9 @@
   "theme_color": "#13B5A5",
   "categories": ["finance", "education", "productivity"],
   "icons": [
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
-    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
   ],
   "shortcuts": [
     { "name": "Catat kas masuk", "short_name": "Kas masuk", "url": "./?source=shortcut", "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }] }
