@@ -423,6 +423,19 @@ table.kt td:first-child,table.kt th:first-child{min-width:220px}
 .aiin textarea{flex:1;resize:none;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:16px;max-height:110px}
 .aiin button{background:var(--teal);color:#fff;border-radius:12px;padding:0 16px;font-weight:800;font-size:13px}
 .aiin button:disabled{opacity:.5}
+/* mulus: scroll, tombol, perpindahan */
+*{-webkit-tap-highlight-color:transparent;scrollbar-width:none;-ms-overflow-style:none}
+*::-webkit-scrollbar{display:none;width:0;height:0}
+.tw,.pkl,#ai-msgs,#galS,.rows,dialog{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+button,.pill,.nav,.chip,.ib,.btn,.bnav button,.pk,.pki{touch-action:manipulation;transition:transform .35s cubic-bezier(.22,1,.36,1),background-color .25s ease,color .25s ease,border-color .25s ease,box-shadow .25s ease,opacity .25s ease}
+button:not(:disabled):not(.pki):not(.pk):active,.pill:active{transform:scale(.95);transition-duration:.1s}
+.pki:active,.pk:active{transform:scale(.985);transition-duration:.1s}
+@keyframes pgIn{from{opacity:0;transform:translate3d(0,10px,0)}to{opacity:1;transform:none}}
+@keyframes dlgIn{from{opacity:0;transform:translate3d(0,18px,0) scale(.97)}to{opacity:1;transform:none}}
+.pgx{animation:pgIn .45s cubic-bezier(.22,1,.36,1) backwards}
+.auth{animation:pgIn .5s cubic-bezier(.22,1,.36,1) backwards}
+dialog[open]{animation:dlgIn .4s cubic-bezier(.22,1,.36,1) backwards}
+dialog[open]::backdrop{animation:spIn .3s ease backwards}
 </style>
 </head>
 <body>
@@ -911,10 +924,14 @@ function render() {
   let v = ui.page === 'admin' && !RO ? vAdmin() : !data.classes.length ? `<div class="hd"><div><h1${isTr() ? ' class="hdesk"' : ''}>Halo, ${esc((user.name || user.email || 'Bendahara').split(/[@\s]/)[0])}!</h1>${mobHd()}<p>Mulai dari membuat kelas.</p></div></div>${noClass()}`
     : ui.page === 'siswa' ? vSiswa() : ui.page === 'keluar' ? vKeluar() : ui.page === 'riwayat' ? vRiwayat() : ui.page === 'ai' && !RO ? vAI() : vHome();
   if (RO) v = roBanner() + v;
-  $('#app').innerHTML = shell(v);
+  const h = shell(v);
+  if (h === render.h && $('#app > .shell')) { setInstallVisible(); return; }
+  render.h = h;
+  $('#app').innerHTML = h;
   setInstallVisible();
   window.scrollTo(0, keep);
 }
+function pgFx() { const m = $('.main'); if (m) { m.classList.remove('pgx'); void m.offsetWidth; m.classList.add('pgx'); } }
 
 /* ---------- aksi ---------- */
 const defDate = () => { const [a, b] = range(ui.period, ui.ref), t = today(); return t >= a && t <= b ? t : a; };
@@ -931,8 +948,8 @@ function readClass(f) {
   return { name, iuran: { d: n('d'), w: n('w'), m: n('m') }, tipe: ['d', 'w', 'm'].includes(f.get('tipe')) ? f.get('tipe') : 'w' };
 }
 const ACT = {
-  go: id => { if (id === 'admin') { RO = null; data = normalize(null); } ui.page = id; if (id !== 'riwayat') ui.all = false; render(); window.scrollTo(0, 0); },
-  per: id => { ui.period = id; ui.gper = null; ui.all = false; render(); },
+  go: id => { if (id === 'admin') { RO = null; data = normalize(null); } ui.page = id; if (id !== 'riwayat') ui.all = false; render(); window.scrollTo(0, 0); pgFx(); },
+  per: id => { ui.period = id; ui.gper = null; ui.all = false; render(); pgFx(); },
   perAll: () => { ui.all = true; render(); },
   tblPrev: () => { ui.ref = shift('m', ui.ref, -1); render(); },
   tblNext: () => { ui.ref = shift('m', ui.ref, 1); render(); },
