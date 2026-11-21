@@ -970,7 +970,7 @@ function vRiwayat() {
   const rows = l.map(x =>
     `<div class="row x"><span class="ico" style="background:${CATS[x.cat] || CATS.Lainnya}">${ic('cash')}</span><div class="t"><b>${esc(x.desc)}</b><small>${dsh(x.date)}${x.ts ? ' · ' + tm(x.ts) : ''} · ${esc(x.cat)}</small></div><div class="xr"><span class="amt out">- ${fmt(x.amount)}</span><div class="xa">${thumb(x)}<button class="ib del" data-act="delExp" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div></div></div>`).join('');
   return `<div class="hd"><div><h1>Riwayat</h1><p>${all ? 'Total masuk ' + fmt(sumA(k.allIn)) + ', keluar ' + fmt(sumA(k.allOut)) + ', saldo ' + fmt(k.saldo) : 'Masuk ' + fmt(k.inSum) + ', keluar ' + fmt(k.outSum)}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-act="backup">${ic('dl')}Backup</button><button class="btn ghost" data-act="restore"><span style="display:inline-flex;transform:rotate(180deg)">${ic('dl')}</span>Pulihkan</button><button class="btn ghost" data-act="expPdf">${ic('dl')}PDF</button><button class="btn ghost" data-act="expXls">${ic('dl')}Excel</button><button class="btn" data-act="pay">${ic('plus')}Catat kas masuk</button></div></div>${toolbar()}
-  ${vTbl(k)}<div class="card lst">${l.length ? `<div class="rows">${rows}</div>` : `<div class="empty">${ic('list', 'big')}<h3>Belum ada catatan</h3><p>Catatan kas masuk dan keluar periode ini muncul di sini.</p></div>`}</div>`;
+  ${vTbl(k)}<div class="card lst">${l.length ? `<div class="rows">${rows}</div>` : `<div class="empty">${ic('list', 'big')}<h3>Belum ada catatan</h3><p>Catatan kas keluar periode ini muncul di sini.</p></div>`}</div>`;
 }
 function render() {
   const keep = window.scrollY;
