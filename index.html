@@ -98,7 +98,11 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .mhero img{position:relative;width:64px;height:64px;border-radius:20px;box-shadow:0 8px 22px rgba(0,0,0,.2)}
 .mhero h2{position:relative;font:800 26px Fredoka,Nunito,sans-serif;margin-top:10px}
 .mhero p{position:relative;opacity:.92;font-size:14px}
-.acard{margin-top:-48px;position:relative;padding:24px 20px}
+.acard{position:relative;padding:24px 20px}
+.acard.m{margin-top:-48px}
+.acard.c{margin:auto}
+.formside{min-height:100dvh}
+.formside:not(:has(.mhero)){padding-top:calc(20px + env(safe-area-inset-top))}
 .acard.m .logo{display:none}
 .acard.m h1{margin-top:0}
 }
@@ -1656,8 +1660,8 @@ function showPin() {
   const has = !!prof.pinHash;
   const draw = () => {
     const [t, sub] = !has ? (first ? ['Ulangi PIN', 'Masukkan PIN yang sama sekali lagi.'] : ['Buat PIN', 'Buat PIN 6 angka. PIN ini sama di semua HP dan laptopmu.']) : ['Masukkan PIN', 'Masukkan PIN 6 angka untuk membuka kas kelas.'];
-    $('#app').innerHTML = `<div class="auth" style="grid-template-columns:1fr"><section class="formside"><div class="acard c"><img class="logo" src="icon.svg" alt=""><h1>${t}</h1><p class="sub">${sub}</p><div class="f"><input id="pin" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="PIN"></div>${has ? '<button class="btn ghost block" id="fp" type="button">Lupa PIN?</button>' : ''}<button class="btn warn block instl" id="lo" type="button">Keluar akun</button></div></section></div>`;
-    const i = $('#pin'); i.focus();
+    $('#app').innerHTML = `<div class="auth" style="grid-template-columns:1fr;min-height:100dvh"><section class="formside"><div class="acard c"><img class="logo" src="icon.svg" alt=""><h1>${t}</h1><p class="sub">${sub}</p><div class="f"><input id="pin" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="PIN"></div>${has ? '<button class="btn ghost block" id="fp" type="button">Lupa PIN?</button>' : ''}<button class="btn warn block instl" id="lo" type="button">Keluar akun</button></div></section></div>`;
+    const i = $('#pin'); window.scrollTo(0, 0); i.focus({ preventScroll: true });
     i.oninput = () => { i.value = i.value.replace(/\D/g, ''); if (i.value.length === 6) done(i.value); };
     $('#lo').onclick = ACT.logout;
     const f = $('#fp'); if (f) f.onclick = forgotPin;
