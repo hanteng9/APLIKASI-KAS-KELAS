@@ -437,6 +437,9 @@ button:not(:disabled):not(.pki):not(.pk):active,.pill:active{transform:scale(.95
 .auth{animation:pgIn .5s cubic-bezier(.22,1,.36,1) backwards}
 dialog[open]{animation:dlgIn .4s cubic-bezier(.22,1,.36,1) backwards}
 dialog[open]::backdrop{animation:spIn .3s ease backwards}
+table.kt td[data-act]{cursor:pointer}
+.kc{transition:transform .25s cubic-bezier(.22,1,.36,1)}
+table.kt td[data-act]:active .kc{transform:scale(.8)}
 </style>
 </head>
 <body>
@@ -489,6 +492,7 @@ const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date
 const today = () => iso(new Date());
 const fotoOk = f => typeof f === 'string' && /^data:image\/(jpeg|png|webp);base64,[A-Za-z0-9+\/=]+$/.test(f);
 const WEBP_OK = (() => { try { return document.createElement('canvas').toDataURL('image/webp').indexOf('data:image/webp') === 0; } catch (e) { return false; } })();
+const tm = t => new Date(t).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 const dsh = s => parse(s).getFullYear() === new Date().getFullYear() ? dm(s) : dmy(s);
 const thumb = x => x.foto ? `<button class="ib ph" data-act="viewFoto" data-id="${x.id}" aria-label="Lihat struk">${ic('img')}</button>` : '';
 let expFoto = '', expBusy = false;
@@ -899,7 +903,7 @@ function vTbl(k) {
     let tot = 0;
     const cells = wk.map((w, j) => {
       const p = sumA(mine.filter(x => x.date >= w.a && x.date <= w.b)); tot += p; colT[j] += p; if (p > 0) colN[j]++;
-      return p <= 0 ? '<td><i class="kc no"></i></td>' : (w.need > 0 && p < w.need) ? `<td title="${esc(fmt(p))}"><i class="kc mid"></i></td>` : `<td title="${esc(fmt(p))}"><i class="kc ok"></i></td>`;
+      return p <= 0 ? '<td><i class="kc no"></i></td>' : (w.need > 0 && p < w.need) ? `<td data-act="cellNote" data-id="${st.id}|${w.a}|${w.b}" title="${esc(fmt(p))}"><i class="kc mid"></i></td>` : `<td data-act="cellNote" data-id="${st.id}|${w.a}|${w.b}" title="${esc(fmt(p))}"><i class="kc ok"></i></td>`;
     }).join('');
     const sc = tot <= 0 ? 'no' : (mneed > 0 && tot < mneed) ? 'mid' : 'ok', pct = tot <= 0 ? 0 : mneed > 0 ? Math.min(100, Math.round(tot / mneed * 100)) : 100;
     return `<tr><td><span class="nm2"><b>${st.no || i + 1}</b><span>${esc(st.name)}</span></span></td>${cells}<td title="${esc(fmt(tot))}"><div class="tt">${esc(fmtK(tot))}</div><div class="bar"><i class="${sc}" style="width:${pct}%"></i></div></td></tr>`;
@@ -914,8 +918,8 @@ function vRiwayat() {
   const k = calc(), all = !!ui.all;
   const l = [...(all ? k.allIn : k.pin).map(x => ({ ...x, t: 'in' })), ...(all ? k.allOut : k.pout).map(x => ({ ...x, t: 'out' }))].sort((a, b) => b.date.localeCompare(a.date));
   const rows = l.map(x => x.t === 'in'
-    ? `<div class="row x"><span class="ico" style="background:var(--teal)">${ic('plus')}</span><div class="t"><b>${esc(sname(k.c, x.studentId))}</b><small>${dsh(x.date)}${x.note ? ' · ' + esc(x.note) : ''}</small></div><div class="xr"><span class="amt in">+ ${fmt(x.amount)}</span><div class="xa"><button class="ib del" data-act="delPay" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div></div></div>`
-    : `<div class="row x"><span class="ico" style="background:${CATS[x.cat] || CATS.Lainnya}">${ic('cash')}</span><div class="t"><b>${esc(x.desc)}</b><small>${dsh(x.date)} · ${esc(x.cat)}</small></div><div class="xr"><span class="amt out">- ${fmt(x.amount)}</span><div class="xa">${thumb(x)}<button class="ib del" data-act="delExp" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div></div></div>`).join('');
+    ? `<div class="row x"><span class="ico" style="background:var(--teal)">${ic('plus')}</span><div class="t"><b>${esc(sname(k.c, x.studentId))}</b><small>${dsh(x.date)}${x.ts ? ' · ' + tm(x.ts) : ''}${x.note ? ' · ' + esc(x.note) : ''}</small></div><div class="xr"><span class="amt in">+ ${fmt(x.amount)}</span><div class="xa"><button class="ib del" data-act="delPay" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div></div></div>`
+    : `<div class="row x"><span class="ico" style="background:${CATS[x.cat] || CATS.Lainnya}">${ic('cash')}</span><div class="t"><b>${esc(x.desc)}</b><small>${dsh(x.date)}${x.ts ? ' · ' + tm(x.ts) : ''} · ${esc(x.cat)}</small></div><div class="xr"><span class="amt out">- ${fmt(x.amount)}</span><div class="xa">${thumb(x)}<button class="ib del" data-act="delExp" data-id="${x.id}" aria-label="Hapus">${ic('trash')}</button></div></div></div>`).join('');
   return `<div class="hd"><div><h1>Riwayat</h1><p>${all ? 'Total masuk ' + fmt(sumA(k.allIn)) + ', keluar ' + fmt(sumA(k.allOut)) + ', saldo ' + fmt(k.saldo) : 'Masuk ' + fmt(k.inSum) + ', keluar ' + fmt(k.outSum)}</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn ghost" data-act="backup">${ic('dl')}Backup</button><button class="btn ghost" data-act="restore"><span style="display:inline-flex;transform:rotate(180deg)">${ic('dl')}</span>Pulihkan</button><button class="btn ghost" data-act="expPdf">${ic('dl')}PDF</button><button class="btn ghost" data-act="expXls">${ic('dl')}Excel</button><button class="btn" data-act="pay">${ic('plus')}Catat kas masuk</button></div></div>${toolbar()}
   ${vTbl(k)}<div class="card lst">${l.length ? `<div class="rows">${rows}</div>` : `<div class="empty">${ic('list', 'big')}<h3>Belum ada catatan</h3><p>Catatan kas masuk dan keluar periode ini muncul di sini.</p></div>`}</div>`;
 }
@@ -1112,7 +1116,7 @@ const ACT = {
         if (lunasOn(f.get('sid'), f.get('date'))) { toast('Periode ini sudah lunas, pilih periode lain'); return false; }
         const rm = payRoom(f.get('sid'), f.get('date'));
         if (amt > rm) { toast('Nominal melebihi iuran, maksimal ' + fmt(rm) + ' untuk periode ini'); return false; }
-        data.payments.push({ id: uid(), classId: c.id, studentId: f.get('sid'), amount: amt, date: f.get('date'), note: f.get('note').trim() });
+        data.payments.push({ id: uid(), classId: c.id, studentId: f.get('sid'), amount: amt, date: f.get('date'), ts: Date.now(), note: f.get('note').trim() });
         save(); render(); toast('Catatan tersimpan');
       });
     const qb = $('#qrisBtn');
@@ -1134,7 +1138,7 @@ const ACT = {
     if (amt > payRoom(sid, date)) return toast('Nominal melebihi iuran, maksimal ' + fmt(payRoom(sid, date)) + ' untuk periode ini');
     const p = qrisAmount(data.qris, amt); if (!p) return toast('QRIS tersimpan rusak, unggah ulang di menu Siswa');
     qrSvg(p).then(svg => { $('#dlg').close(); modal('Scan QRIS', `<div class="qrbox">${svg}</div><p class="msg" style="text-align:center;margin-bottom:4px"><b>${esc(sname(c, sid))}</b><br>${fmt(amt)}</p><p class="cap" style="text-align:center">${esc(qrisName(data.qris))}. Nominal sudah terisi, tinggal scan dan bayar.</p>`, () => {
-      data.payments.push({ id: uid(), classId: c.id, studentId: sid, amount: amt, date, note: note ? note + ' (QRIS)' : 'QRIS' });
+      data.payments.push({ id: uid(), classId: c.id, studentId: sid, amount: amt, date, ts: Date.now(), note: note ? note + ' (QRIS)' : 'QRIS' });
       save(); render(); toast('Catatan tersimpan');
     }, 'Sudah dibayar'); }).catch(() => toast('Gagal membuat QR, cek koneksi internet'));
   },
@@ -1150,6 +1154,11 @@ const ACT = {
     i.click();
   },
   qrisDel: () => ask('QRIS yang tersimpan akan dihapus.', () => { data.qris = ''; save(); render(); toast('Catatan tersimpan'); }),
+  cellNote: id => {
+    const c = C(), [sid, a, b] = String(id).split('|'), st = c.students.find(x => x.id === sid);
+    const L = data.payments.filter(x => x.classId === c.id && x.studentId === sid && x.date >= a && x.date <= b).sort((x, y) => (y.ts || 0) - (x.ts || 0) || String(y.date).localeCompare(String(x.date)));
+    modal(esc(st ? st.name : 'Siswa'), `<p class="cap" style="margin-bottom:8px">Catatan bayar kas ${dmy(a)} – ${dmy(b)}</p><div class="rows">${L.length ? L.map(x => `<div class="row"><div class="t"><b>${fmt(x.amount)}</b><small style="display:block">${dmy(x.date)}${x.ts ? ' · ' + tm(x.ts) : ''}</small><small style="display:block">${x.note ? esc(x.note) : 'Tanpa catatan'}</small></div></div>`).join('') : '<p class="cap">Belum ada catatan.</p>'}</div>`, () => {}, 'Tutup');
+  },
   delPay: id => ask('Hapus catatan kas masuk ini?', () => { data.payments = data.payments.filter(x => x.id !== id); save(); render(); toast('Catatan tersimpan'); }),
   addExp: () => {
     const c = C();
@@ -1167,7 +1176,7 @@ const ACT = {
         if (expBusy) { toast('Foto masih diproses, tunggu sebentar'); return false; }
         const useFs = !!(expFoto && fb), eid = uid();
         if (expFoto && !useFs && JSON.stringify(data).length + expFoto.length > 900000) { toast('Ruang penyimpanan foto penuh. Hapus struk lama atau kosongkan foto'); return false; }
-        data.expenses.push({ id: eid, classId: c.id, amount: amt, date: f.get('date'), desc, cat: f.get('cat'), ...(expFoto ? { foto: useFs ? 'fs' : expFoto } : {}) });
+        data.expenses.push({ id: eid, classId: c.id, amount: amt, date: f.get('date'), ts: Date.now(), desc, cat: f.get('cat'), ...(expFoto ? { foto: useFs ? 'fs' : expFoto } : {}) });
         if (useFs) {
           fotoCache.set(eid, expFoto);
           fotoRef(user.uid, eid).set({ d: expFoto, t: Date.now() }).catch(() => { toast('Foto gagal diunggah'); const e = data.expenses.find(z => z.id === eid); if (e) { delete e.foto; save(); render(); } });
