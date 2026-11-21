@@ -204,6 +204,29 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke
 /* dialog */
 dialog{border:0;border-radius:26px;padding:0;width:min(440px,calc(100vw - 28px));max-height:92vh;box-shadow:0 20px 60px rgba(30,43,74,.25);color:var(--ink);margin:auto}
 dialog::backdrop{background:rgba(30,43,74,.45)}
+.pk{width:100%;min-height:46px;padding:8px 14px;border:1.5px solid var(--line);border-radius:14px;background:#fff;display:flex;align-items:center;gap:10px;text-align:left;font:inherit;font-weight:700;color:var(--ink);transition:border-color .2s,box-shadow .2s}
+.pk:focus-visible,.pk:active{border-color:var(--teal);box-shadow:0 0 0 4px rgba(19,181,165,.14)}
+.pk .pl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pk::after{content:"";width:8px;height:8px;border-right:2px solid var(--mut);border-bottom:2px solid var(--mut);transform:rotate(45deg) translateY(-2px);margin-right:4px;flex:none}
+.pt{font-style:normal;font-size:11px;font-weight:800;padding:3px 10px;border-radius:999px;text-transform:capitalize;flex:none}
+.pt.belum{background:var(--coralL);color:#C0392B}
+.pt.sebagian{background:var(--sunL);color:#8A6200}
+.pt.lunas{background:var(--tealL);color:var(--tealD)}
+.pks{position:fixed;inset:0;z-index:5;display:flex;align-items:flex-end;justify-content:center}
+.pkb{position:absolute;inset:0;background:rgba(30,43,74,.4);opacity:0;transition:opacity .3s ease}
+.pkp{position:relative;width:min(440px,100%);max-height:72vh;display:flex;flex-direction:column;background:#fff;border-radius:28px 28px 0 0;padding:10px 16px calc(16px + env(safe-area-inset-bottom));box-shadow:0 -12px 40px rgba(30,43,74,.2);transform:translate3d(0,100%,0);transition:transform .38s cubic-bezier(.22,1,.36,1);will-change:transform}
+.pks.in .pkb{opacity:1}
+.pks.in .pkp{transform:none}
+.pkg{width:42px;height:5px;border-radius:5px;background:var(--line);margin:0 auto 12px;flex:none}
+.pkp h4{font:600 18px Fredoka,Nunito,sans-serif;text-align:center;margin-bottom:12px;flex:none}
+.pkl{position:relative;min-height:0;overflow-y:auto;overscroll-behavior:contain;display:grid;gap:8px;padding:2px 2px 4px}
+.pki{display:flex;align-items:center;gap:10px;width:100%;min-height:54px;padding:10px 14px;border-radius:16px;border:1.5px solid var(--line);background:#fff;font:inherit;font-weight:700;font-size:15px;color:var(--ink);text-align:left;transition:background .2s,border-color .2s,transform .15s}
+.pki:active{transform:scale(.98)}
+.pki .pl{flex:1}
+.pki.on{background:var(--tealL);border-color:var(--teal)}
+.ck{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none;position:relative;transition:background .2s,border-color .2s}
+.pki.on .ck{background:var(--teal);border-color:var(--teal)}
+.pki.on .ck::after{content:"";position:absolute;left:6px;top:2.5px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
 .mform{padding:24px}
 .mform h3{font-size:22px;margin-bottom:16px}
 .mact{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
@@ -706,6 +729,28 @@ function modal(title, html, onOk, okText = 'Simpan') {
 const ask = (msg, yes, txt = 'Hapus') => modal('Yakin?', `<p class="msg">${msg}</p>`, () => { yes(); }, txt);
 const fld = (l, i) => `<div class="f"><label>${l}</label>${i}</div>`;
 $('#dlg').addEventListener('click', e => { if (e.target === $('#dlg')) $('#dlg').close(); });
+function pickSel(sel) {
+  if (!sel || sel.dataset.pk) return; sel.dataset.pk = 1;
+  const d = $('#dlg'), sp = o => { const t = o.textContent, i = t.lastIndexOf(' · '); return i < 0 ? [t, ''] : [t.slice(0, i), t.slice(i + 3)]; };
+  const tg = t => t ? `<i class="pt ${esc(t)}">${esc(t)}</i>` : '';
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'pk'; b.setAttribute('aria-haspopup', 'listbox');
+  sel.after(b); sel.style.display = 'none';
+  const refresh = () => { const o = sel.selectedOptions[0]; if (!o) { b.innerHTML = ''; return; } const [l, t] = sp(o); b.innerHTML = `<span class="pl">${esc(l)}</span>${tg(t)}`; };
+  refresh(); sel.addEventListener('change', refresh); new MutationObserver(refresh).observe(sel, { childList: true });
+  b.onclick = () => {
+    const w = document.createElement('div'); w.className = 'pks';
+    w.innerHTML = `<div class="pkb"></div><div class="pkp" role="listbox"><div class="pkg"></div><h4>Pilih periode</h4><div class="pkl">${Array.from(sel.options).map((o, i) => { const [l, t] = sp(o); return `<button type="button" class="pki${o.selected ? ' on' : ''}" data-i="${i}" role="option" aria-selected="${o.selected}"><span class="pl">${esc(l)}</span>${tg(t)}<span class="ck"></span></button>`; }).join('')}</div></div>`;
+    d.appendChild(w);
+    const list = w.querySelector('.pkl'), on = w.querySelector('.on');
+    if (on) list.scrollTop = on.offsetTop - list.clientHeight / 2 + on.offsetHeight / 2;
+    const onCancel = e => { e.preventDefault(); close(); };
+    const close = () => { d.removeEventListener('cancel', onCancel); w.classList.remove('in'); setTimeout(() => w.remove(), 400); };
+    d.addEventListener('cancel', onCancel);
+    w.querySelector('.pkb').onclick = close;
+    list.onclick = e => { const it = e.target.closest('.pki'); if (!it) return; sel.selectedIndex = +it.dataset.i; sel.dispatchEvent(new Event('change', { bubbles: true })); close(); };
+    void w.offsetWidth; w.classList.add('in');
+  };
+}
 
 /* ---------- grafik ---------- */
 function niceStep(mx) {
@@ -1060,6 +1105,7 @@ const ACT = {
       fm.date.onchange = () => { if (okDate(fm.date.value)) { fm.per.innerHTML = perHtml(fm.sid.value, fm.date.value); sync(); } };
       qb.onclick = () => ACT.qrisPay(fm);
     }
+    pickSel($('#dlg select[name=per]'));
   },
   qrisPay: form => {
     const c = C(), f = new FormData(form), amt = parseRp(f.get('amt')), sid = f.get('sid'), date = f.get('date'), note = (f.get('note') || '').trim();
