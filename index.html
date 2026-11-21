@@ -234,29 +234,18 @@ dialog::backdrop{background:rgba(30,43,74,.45)}
 .msg{color:var(--mut);margin-bottom:12px}
 #toast{position:fixed;left:50%;top:auto;right:auto;margin:0;border:0;overflow:visible;width:max-content;height:auto;bottom:90px;transform:translate(-50%,20px);background:var(--ink);color:#fff;padding:12px 20px;border-radius:999px;font-weight:700;opacity:0;pointer-events:none;transition:.25s;z-index:99;max-width:calc(100vw - 32px);text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
-#splash{position:fixed;inset:0;background:radial-gradient(circle at 50% 42%,#12B3A3 0,#0A7068 46%,#052F2C 100%);display:grid;place-items:center;z-index:100;overflow:hidden;opacity:1;transition:opacity .8s cubic-bezier(.4,0,.2,1)}
+#splash{position:fixed;inset:0;background:radial-gradient(120% 90% at 50% 38%,#0E8F84 0,#0A5F59 52%,#06302D 100%);display:grid;place-items:center;z-index:100;opacity:1;transition:opacity .7s cubic-bezier(.4,0,.2,1)}
 #splash.out{opacity:0;pointer-events:none}
-.sp-bg{position:absolute;inset:0;pointer-events:none;opacity:0;animation:spIn 1.6s cubic-bezier(.22,1,.36,1) both}
-.sp-bg i{position:absolute;border-radius:50%;filter:blur(46px);opacity:.55}
-.sp-bg i:nth-child(1){width:300px;height:300px;left:-90px;top:-70px;background:#FFC83D}
-.sp-bg i:nth-child(2){width:320px;height:320px;right:-110px;bottom:-90px;background:#5AA9FF;opacity:.4}
-.sp-bg i:nth-child(3){width:220px;height:220px;right:-40px;top:8%;background:#13B5A5}
-.sp-c{position:relative;display:flex;flex-direction:column;align-items:center;text-align:center;transition:transform .8s cubic-bezier(.4,0,.2,1)}
-#splash.out .sp-c{transform:scale(1.05)}
-.sp-halo{position:absolute;top:48px;left:50%;width:280px;height:280px;margin:-140px 0 0 -140px;border-radius:50%;background:radial-gradient(circle,rgba(255,255,255,.45),rgba(255,200,61,.18) 40%,transparent 68%);opacity:0;animation:spGlow 1.6s cubic-bezier(.22,1,.36,1) .1s both}
-.sp-ring,.sp-orb,.sp-pt,.sp-gl{display:none}
-.sp-logo{position:relative;width:96px;height:96px;border-radius:30px;box-shadow:0 22px 50px rgba(0,0,0,.35),0 0 0 1px rgba(255,255,255,.25);opacity:0;will-change:transform,opacity;animation:spRise 1.1s cubic-bezier(.22,1,.36,1) .15s both}
-#splash img{display:block;width:96px;height:96px;border-radius:30px}
-.sp-t{margin-top:26px;font:800 30px Fredoka,Nunito,sans-serif;color:#fff;letter-spacing:.02em;text-shadow:0 4px 18px rgba(0,0,0,.25)}
-.sp-t span{display:inline-block;opacity:0;animation:spIn .9s ease calc(.7s + var(--i) * .06s) both}
-.sp-s{margin-top:4px;color:rgba(255,255,255,.78);font-size:11px;font-weight:800;letter-spacing:.22em;text-transform:uppercase;opacity:0;animation:spIn 1s ease 1.3s both}
-.sp-c::after{content:"";display:block;margin-top:26px;width:120px;height:3px;border-radius:3px;background:#FFC83D;transform-origin:left center;will-change:transform;animation:spBar 2s cubic-bezier(.45,0,.2,1) .3s both}
-@keyframes spIn{from{opacity:0}to{opacity:1}}
-@keyframes spGlow{from{opacity:0;transform:scale(.8)}to{opacity:1;transform:scale(1)}}
-@keyframes spRise{from{opacity:0;transform:translate3d(0,22px,0) scale(.92)}to{opacity:1;transform:none}}
-@keyframes spBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
-@media(prefers-reduced-motion:reduce){#splash *{animation:none!important;opacity:1!important}}
-@media(prefers-reduced-motion:reduce){.sp-c::after{animation:none!important}}
+.sx-c{display:flex;flex-direction:column;align-items:center;text-align:center;transition:transform .7s cubic-bezier(.4,0,.2,1)}
+#splash.out .sx-c{transform:scale(.98)}
+.sx-logo{width:84px;height:84px;border-radius:26px;box-shadow:0 18px 44px rgba(0,0,0,.28);animation:sxIn 1s cubic-bezier(.22,1,.36,1) .1s both}
+.sx-t{margin-top:22px;font:700 26px Fredoka,Nunito,sans-serif;color:#fff;letter-spacing:.02em;animation:sxIn 1s cubic-bezier(.22,1,.36,1) .45s both}
+.sx-s{margin-top:6px;font:600 11px Nunito,sans-serif;letter-spacing:.28em;text-transform:uppercase;color:rgba(255,255,255,.6);animation:sxIn 1s cubic-bezier(.22,1,.36,1) .75s both}
+.sx-ln{margin-top:30px;width:96px;height:2px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden}
+.sx-ln i{display:block;height:100%;background:#fff;transform-origin:left center;will-change:transform;animation:sxBar 1.8s cubic-bezier(.4,0,.2,1) .3s both}
+@keyframes sxIn{from{opacity:0;transform:translate3d(0,8px,0)}to{opacity:1;transform:none}}
+@keyframes sxBar{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+@media(prefers-reduced-motion:reduce){#splash *{animation:none!important}}
 @keyframes bob{to{transform:translateY(-8px)}}
 
 @media(max-width:1100px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat.hero,.stats>.stat:last-child{grid-column:1/-1}.grid2{grid-template-columns:minmax(0,1fr)}}
@@ -440,10 +429,21 @@ dialog[open]::backdrop{animation:spIn .3s ease backwards}
 table.kt td[data-act]{cursor:pointer}
 .kc{transition:transform .25s cubic-bezier(.22,1,.36,1)}
 table.kt td[data-act]:active .kc{transform:scale(.8)}
+.npad{display:none}
+@media(pointer:coarse){.npad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:2px 0 12px}.npad button{min-height:46px;border-radius:16px;background:var(--bg);font:600 22px Fredoka,sans-serif;color:var(--ink)}}
+.tnotes{margin-top:18px}
+.tnh{display:flex;align-items:center;gap:10px;margin-top:14px;padding:10px 14px;border-radius:14px;background:var(--tealL);color:var(--tealD);font-weight:800}
+.tnh b{min-width:22px}
+.tnh span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tnh em{font-style:normal}
+.tnr{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.tnr b{display:block;font-weight:800;font-size:14px}
+.tnr small{color:var(--mut);font-size:13px}
+.tnr>span{font-weight:800;color:var(--tealD);white-space:nowrap}
 </style>
 </head>
 <body>
-<div id="splash"><div class="sp-bg"><i></i><i></i><i></i></div><div class="sp-c"><div class="sp-halo"></div><div class="sp-ring"></div><div class="sp-ring r2"></div><div class="sp-orb"><i></i><i></i></div><div class="sp-pt"><i style="--a:0deg;--d:150px;--s:8px;--c:#FFC83D;--dl:0s"></i><i style="--a:30deg;--d:120px;--s:6px;--c:#fff;--dl:0.04s"></i><i style="--a:60deg;--d:160px;--s:9px;--c:#FFC83D;--dl:0.02s"></i><i style="--a:90deg;--d:130px;--s:6px;--c:#fff;--dl:0.06s"></i><i style="--a:120deg;--d:150px;--s:8px;--c:#FFC83D;--dl:0.03s"></i><i style="--a:150deg;--d:120px;--s:6px;--c:#fff;--dl:0.05s"></i><i style="--a:180deg;--d:160px;--s:9px;--c:#FFC83D;--dl:0.01s"></i><i style="--a:210deg;--d:130px;--s:6px;--c:#fff;--dl:0.07s"></i><i style="--a:240deg;--d:150px;--s:8px;--c:#FFC83D;--dl:0.04s"></i><i style="--a:270deg;--d:120px;--s:6px;--c:#fff;--dl:0.02s"></i><i style="--a:300deg;--d:160px;--s:9px;--c:#FFC83D;--dl:0.05s"></i><i style="--a:330deg;--d:130px;--s:6px;--c:#fff;--dl:0.03s"></i></div><div class="sp-logo"><img src="icon.svg" alt="Kas Kelas"><div class="sp-gl"></div></div><div class="sp-t" aria-label="Kas Kelas"><span style="--i:0">K</span><span style="--i:1">a</span><span style="--i:2">s</span><span style="--i:3">&nbsp;</span><span style="--i:4">K</span><span style="--i:5">e</span><span style="--i:6">l</span><span style="--i:7">a</span><span style="--i:8">s</span></div><div class="sp-s">Rapi · Transparan</div></div></div>
+<div id="splash"><div class="sx-c"><img class="sx-logo" src="icon.svg" alt="Kas Kelas"><div class="sx-t">Kas Kelas</div><div class="sx-s">Rapi · Transparan</div><div class="sx-ln"><i></i></div></div></div>
 <div id="app"></div>
 <dialog id="dlg"></dialog>
 <div id="toast" popover="manual" role="status" aria-live="polite"></div>
@@ -908,11 +908,17 @@ function vTbl(k) {
     const sc = tot <= 0 ? 'no' : (mneed > 0 && tot < mneed) ? 'mid' : 'ok', pct = tot <= 0 ? 0 : mneed > 0 ? Math.min(100, Math.round(tot / mneed * 100)) : 100;
     return `<tr><td><span class="nm2"><b>${st.no || i + 1}</b><span>${esc(st.name)}</span></span></td>${cells}<td title="${esc(fmt(tot))}"><div class="tt">${esc(fmtK(tot))}</div><div class="bar"><i class="${sc}" style="width:${pct}%"></i></div></td></tr>`;
   }).join('');
+  const notes = c.students.slice().sort((a, b) => (a.no || 0) - (b.no || 0)).map(st => {
+    const L = pays.filter(x => x.studentId === st.id).sort((a, b) => String(a.date).localeCompare(String(b.date)) || (a.ts || 0) - (b.ts || 0));
+    if (!L.length) return '';
+    return `<div class="tnh"><b>${st.no || ''}</b><span>${esc(st.name)}</span><em>${esc(fmt(sumA(L)))}</em></div>${L.map(x => `<div class="tnr"><div><b>${dmy(x.date)}${x.ts ? ' · ' + tm(x.ts) : ''}</b><small>${x.note ? esc(x.note) : 'Tanpa catatan'}</small></div><span>+ ${fmt(x.amount)}</span></div>`).join('')}`;
+  }).join('');
   const head = wk.map((w, j) => `<th>M${j + 1}<small>${parse(w.a).getDate()}–${parse(w.b).getDate()}</small></th>`).join('');
   const foot = colN.map(v => `<td>${v > 0 ? v : '–'}</td>`).join('');
   return `<section class="card" style="margin-bottom:16px"><div class="tbh"><h3>Tabel bayar kas</h3><div class="tbn"><button class="ib" data-act="tblPrev" aria-label="Bulan sebelumnya">${ic('l')}</button><span>${MONF[d0.getMonth()]} ${d0.getFullYear()}</span><button class="ib" data-act="tblNext" aria-label="Bulan berikutnya">${ic('r')}</button></div></div>
   ${c.students.length ? `<div class="tw"><table class="kt"><thead><tr><th>Siswa</th>${head}<th>Total</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td>Total</td>${foot}<td>${esc(fmtK(sumA(pays)))}</td></tr></tfoot></table></div>
-  <div class="tleg"><span><i class="kc ok"></i>Lunas</span><span><i class="kc mid"></i>Sebagian</span><span><i class="kc no"></i>Belum</span><span>M = minggu ke-</span></div>` : '<p class="cap">Belum ada siswa di kelas ini.</p>'}</section>`;
+  <div class="tleg"><span><i class="kc ok"></i>Lunas</span><span><i class="kc mid"></i>Sebagian</span><span><i class="kc no"></i>Belum</span><span>M = minggu ke-</span></div>
+  <div class="tnotes">${notes || '<p class="cap">Belum ada catatan bulan ini.</p>'}</div>` : '<p class="cap">Belum ada siswa di kelas ini.</p>'}</section>`;
 }
 function vRiwayat() {
   const k = calc(), all = !!ui.all;
@@ -1729,9 +1735,12 @@ function showPin() {
   if (window.visualViewport) { visualViewport.addEventListener('resize', fit); visualViewport.addEventListener('scroll', fit); }
   const draw = () => {
     const [t, sub] = !has ? (first ? ['Ulangi PIN', 'Masukkan PIN yang sama sekali lagi.'] : ['Buat PIN', 'Buat PIN 6 angka. PIN ini sama di semua HP dan laptopmu.']) : ['Masukkan PIN', 'Masukkan PIN 6 angka untuk membuka kas kelas.'];
-    $('#app').innerHTML = `<div class="auth" style="grid-template-columns:1fr;min-height:100dvh"><section class="formside"><div class="acard c"><img class="logo" src="icon.svg" alt=""><h1>${t}</h1><p class="sub">${sub}</p><div class="f"><input id="pin" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="PIN"></div>${has ? '<button class="btn ghost block" id="fp" type="button">Lupa PIN?</button>' : ''}<button class="btn warn block instl" id="lo" type="button">Keluar akun</button></div></section></div>`;
+    $('#app').innerHTML = `<div class="auth" style="grid-template-columns:1fr;min-height:100dvh"><section class="formside"><div class="acard c"><img class="logo" src="icon.svg" alt=""><h1>${t}</h1><p class="sub">${sub}</p><div class="f"><input id="pin" class="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="6" aria-label="PIN"></div><div class="npad">${[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, '⌫'].map(k => k === '' ? '<span></span>' : `<button type="button" data-k="${k}" aria-label="${k === '⌫' ? 'Hapus' : k}">${k}</button>`).join('')}</div>${has ? '<button class="btn ghost block" id="fp" type="button">Lupa PIN?</button>' : ''}<button class="btn warn block instl" id="lo" type="button">Keluar akun</button></div></section></div>`;
     const i = $('#pin'); fit(); i.focus({ preventScroll: true });
     i.oninput = () => { i.value = i.value.replace(/\D/g, ''); if (i.value.length === 6) done(i.value); };
+    if (matchMedia('(pointer:coarse)').matches) { i.readOnly = true; i.inputMode = 'none'; }
+    document.querySelectorAll('.npad button').forEach(b => b.onclick = () => { if (i.disabled) return; const k = b.dataset.k; i.value = k === '⌫' ? i.value.slice(0, -1) : (i.value + k).slice(0, 6); i.oninput(); });
+    [0, 300, 1200].forEach(ms => setTimeout(() => { const p = $('#pin'); if (p && !p.disabled && !p.readOnly && document.activeElement !== p) p.focus({ preventScroll: true }); }, ms));
     $('#lo').onclick = ACT.logout;
     const f = $('#fp'); if (f) f.onclick = forgotPin;
   };
@@ -1750,6 +1759,13 @@ function showPin() {
       draw();
     } catch (e) { toast('Gagal memproses PIN'); draw(); }
   };
+  if (!window.__pinGrab) {
+    window.__pinGrab = 1;
+    const grab = () => { const p = $('#pin'); if (p && !p.disabled && !p.readOnly && !document.querySelector('dialog[open]') && document.activeElement !== p) p.focus({ preventScroll: true }); };
+    document.addEventListener('keydown', e => { if (/^\d$/.test(e.key)) grab(); });
+    window.addEventListener('focus', grab);
+    document.addEventListener('pointerdown', e => { if (e.target.closest('.auth') && !e.target.closest('button')) grab(); });
+  }
   draw();
 }
 async function reauth(pw) {
