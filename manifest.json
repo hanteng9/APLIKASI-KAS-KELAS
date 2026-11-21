@@ -9,7 +9,7 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#0A7068",
+  "background_color": "#F2FAF8",
   "theme_color": "#13B5A5",
   "categories": ["finance", "education", "productivity"],
   "icons": [
