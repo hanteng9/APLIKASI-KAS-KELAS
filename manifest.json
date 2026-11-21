@@ -4,7 +4,7 @@
   "short_name": "Kas Kelas",
   "description": "Catat iuran, pantau saldo, dan transparansi kas kelas.",
   "lang": "id",
-  "dir": "ltr",
+  "dir": "ltr", 
   "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
