@@ -1924,7 +1924,7 @@ async function googleLogin() {
       const cr = r && r.credential;
       if (!cr || !cr.idToken) return toast('Login Google gagal: token tidak diterima');
       await fb.auth.signInWithCredential(firebase.auth.GoogleAuthProvider.credential(cr.idToken, cr.accessToken || null));
-    } else await fb.auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+    } else { const gp = new firebase.auth.GoogleAuthProvider(); gp.setCustomParameters({ prompt: 'select_account' }); await fb.auth.signInWithPopup(gp); }
   }
   catch (err) {
     const m = String((err && (err.message || err.code)) || err);
